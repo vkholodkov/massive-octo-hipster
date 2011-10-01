@@ -9,6 +9,7 @@
 #include "symtab.h"
 
 #define         BOO_TOKEN           0x80000000
+#define         boo_token_get(x) ((x) & ~BOO_TOKEN)
 
 #define boo_is_token(x) (((x) & BOO_TOKEN) != 0)
 
@@ -23,6 +24,7 @@ typedef struct {
     boo_uint_t              num_symbols;
 
     void                    **lhs_lookup;
+    void                    **transition_lookup;
 } boo_grammar_t;
 
 typedef struct boo_rule_s {

@@ -202,6 +202,12 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
 
     memcpy(grammar->lhs_lookup, lhs_lookup->elements, grammar->num_symbols * sizeof(boo_rule_t*));
 
+    grammar->transition_lookup = pcalloc(grammar->pool, (grammar->num_symbols + UCHAR_MAX + 1) * sizeof(boo_lalr1_item_set_t*));    
+
+    if(grammar->transition_lookup == NULL) {
+        goto cleanup;
+    }
+
     fclose(fin);
     return BOO_OK;
 
