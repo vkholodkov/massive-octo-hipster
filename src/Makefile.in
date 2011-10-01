@@ -1,0 +1,35 @@
+AR=@AR@
+CC=@CC@
+LD=@CC@
+INCLUDES=-I..
+CFLAGS=$(INCLUDES) @CFLAGS@
+LDFLAGS=@LDFLAGS@
+LIBS=@LIBS@
+TEST_OBJS=
+TEST=
+OBJS=pool.o symtab.o string.o list.o bootstrap.o vector.o grammar.o
+TARGET_OBJS=main.o
+TARGET=booc
+DEPS=.deps
+
+$(TARGET): $(TARGET_OBJS) $(TARGET_OBJS) $(OBJS)
+	@echo "Linking $@"
+	$(CC) $^ -o $@ $(CDFLAGS) $(LDFLAGS) $(LIBS)
+
+%.o:	%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+%.d:	%.c
+	gcc -M -MF$@ $(CFLAGS) $<
+
+clean:
+	rm -f core $(OBJS) $(TEST_OBJS) $(TEST_RUNNER_OBJS) $(MODULE) $(TEST) $(MODULE)
+
+distclean: clean
+	rm -f $(DEPS) $(patsubst %.o,%.d,$(OBJS)) $(patsubst %.o,%.d,$(TEST_OBJS))
+
+depend: $(patsubst %.o,%.d,$(OBJS)) $(patsubst %.o,%.d,$(TEST_OBJS))
+	cat $^ > $(DEPS)
+
+-include .deps
+

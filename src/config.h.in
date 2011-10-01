@@ -1,0 +1,33 @@
+
+/* Define whether we have madvise syscall */
+#undef HAVE_MADVISE
+
+/* Define whether we have posix_madvise syscall */
+#undef HAVE_POSIX_MADVISE
+
+/* Define whether we have fadvise syscall */
+#undef HAVE_FADVISE
+
+/* Define whether we have posix_fadvise syscall */
+#undef HAVE_POSIX_FADVISE
+
+/* Define whether we have fallocate syscall */
+#undef HAVE_FALLOCATE
+
+/* Define whether we have posix_fallocate syscall */
+#undef HAVE_POSIX_FALLOCATE
+
+/* Define whether we have mlock syscall */
+#undef HAVE_MLOCK
+
+/* Define to 1 if you have the <aio.h> header file. */
+#undef HAVE_AIO_H
+
+/* Define to 1 if you have the `eventfd' function. */
+#undef HAVE_EVENTFD
+
+/* Define to 1 if you have the <libaio.h> header file. */
+#undef HAVE_LIBAIO_H
+
+/* Define if your system supports Linux AIO with eventfd */
+#undef HAVE_LINUX_AIO
