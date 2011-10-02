@@ -189,35 +189,73 @@ grammar_close_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
     return BOO_OK;
 }
 
-/*
- * See if advancing position of a given item will lead to an existing item
- * TODO: rewrite to something faster
- */
 static boo_int_t
-grammar_is_in_core_items(boo_list_t *item_sets, boo_lalr1_item_t *v, boo_uint_t pos)
+grammar_core_sets_match(boo_lalr1_item_set_t *item_set1, boo_lalr1_item_set_t *item_set2)
 {
-    boo_lalr1_item_t *item;
-    boo_lalr1_item_set_t *item_set;
+    boo_lalr1_item_t *item1;
+    boo_lalr1_item_t *item2;
+    boo_uint_t num_core1 = 0;
+    boo_uint_t num_core2 = 0;
 
-    item_set = boo_list_begin(item_sets);
+    item1 = boo_list_begin(&item_set1->items);
 
-    while(item_set != boo_list_end(item_sets)) {
-        item = boo_list_begin(&item_set->items);
+    while(item1 != boo_list_end(&item_set1->items)) {
 
-        while(item != boo_list_end(&item_set->items)) {
-            if(item->core && item->lhs == v->lhs && item->length == v->length && 
-                item->pos == pos && !memcmp(item->rhs, v->rhs, item->length * sizeof(boo_uint_t)))
-            {
-                return 1;
-            }
-
-            item = boo_list_next(item);
+        if(item1->core) {
+            num_core1++;
         }
 
-        item_set = boo_list_next(item_set);
+        item2 = boo_list_begin(&item_set2->items);
+
+        while(item2 != boo_list_end(&item_set2->items)) {
+            if(item1->core && item2->core && item1->lhs == item2->lhs && item1->length == item2->length && 
+                item1->pos == item2->pos && !memcmp(item1->rhs, item2->rhs, item1->length * sizeof(boo_uint_t)))
+            {
+                num_core2++;
+            }
+
+            item2 = boo_list_next(item2);
+        }
+
+        item1 = boo_list_next(item1);
     }
 
-    return 0;
+    return (num_core1 == num_core2);
+}
+
+static boo_int_t
+grammar_remove_duplicate_core_sets(boo_grammar_t *grammar, boo_list_t *item_sets, boo_list_t *result_sets)
+{
+    boo_lalr1_item_set_t *item_set1, *item_set2, *tmp;
+
+    item_set1 = boo_list_begin(item_sets);
+
+    while(item_set1 != boo_list_end(item_sets)) {
+
+        item_set2 = boo_list_begin(result_sets);
+
+        while(item_set2 != boo_list_end(result_sets)) {
+            if(grammar_core_sets_match(item_set1, item_set2)) {
+                tmp = boo_list_next(item_set2);
+
+#if 0
+                printf("Removing duplicate core set:\n");
+                grammar_dump_item_set(grammar, item_set2);
+#endif
+
+                boo_list_remove(&item_set2->entry);
+
+                item_set2 = tmp;
+            }
+            else {
+                item_set2 = boo_list_next(item_set2);
+            }
+        }
+
+        item_set1 = boo_list_next(item_set1);
+    }
+
+    return BOO_OK;
 }
 
 static boo_int_t
@@ -231,9 +269,7 @@ grammar_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set,
     item = boo_list_begin(&item_set->items);
 
     while(item != boo_list_end(&item_set->items)) {
-        if(item->pos != item->length && boo_token_get(item->rhs[item->pos]) != BOO_ACCEPT &&
-            !grammar_is_in_core_items(&grammar->item_sets, item, item->pos + 1) &&
-            !grammar_is_in_core_items(item_sets, item, item->pos + 1))
+        if(item->pos != item->length && boo_token_get(item->rhs[item->pos]) != BOO_ACCEPT)
         {
             symbol = boo_token_get(item->rhs[item->pos]);
             lookup = grammar->transition_lookup + symbol;
@@ -336,6 +372,12 @@ grammar_build_item_sets(boo_grammar_t *grammar)
         }
 
         boo_list_splice(&grammar->item_sets, &to_process);
+
+        rc = grammar_remove_duplicate_core_sets(grammar, &grammar->item_sets, &add_queue);
+
+        if(rc == BOO_ERROR) {
+            return BOO_ERROR;
+        }
     } while(!boo_list_empty(&add_queue));
 
     return BOO_OK;
