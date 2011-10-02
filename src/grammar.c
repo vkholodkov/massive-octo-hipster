@@ -303,6 +303,10 @@ grammar_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set,
             new_item->core = 1;
 
             boo_list_append(&new_item_set->items, &new_item->entry);
+
+            if(new_item->pos == new_item->length) {
+                new_item_set->has_reductions = 1;
+            }
         }
 
         item = boo_list_next(item);

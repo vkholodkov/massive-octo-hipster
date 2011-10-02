@@ -62,7 +62,9 @@ typedef struct {
 typedef struct {
     boo_list_entry_t        entry;
     boo_list_t              items;
+
     unsigned                closed:1;
+    unsigned                has_reductions:1;
 } boo_lalr1_item_set_t;
 
 typedef struct {
