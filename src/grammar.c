@@ -3,6 +3,8 @@
 
 #include "grammar.h"
 
+static const boo_str_t accept_symbol_name = boo_string("$accept");
+
 static void grammar_dump_item(boo_grammar_t*, boo_lalr1_item_t*);
 static void grammar_dump_item_set(boo_grammar_t*, boo_lalr1_item_set_t*);
 
@@ -50,7 +52,7 @@ boo_int_t grammar_wrapup(boo_grammar_t *grammar) {
             symbol = symtab_resolve(grammar->symtab, &grammar->lhs_lookup[i].name);
 
             if(symbol != NULL && !boo_is_token(symbol->value)) {
-                fprintf(stderr, "non-terminal %s has no rules\n",
+                fprintf(stderr, "non-terminal %s is used in right-hand side but has no rules\n",
                     grammar->lhs_lookup[i].name.data);
                 return BOO_ERROR;
             }
@@ -377,11 +379,16 @@ grammar_dump_item(boo_grammar_t *grammar, boo_lalr1_item_t *item) {
             printf(". ");
         }
 
-        if(boo_is_token(item->rhs[i])) {
-            printf("%x ", item->rhs[i]);
+        if(boo_is_token(item->rhs[i]) && boo_token_get(item->rhs[i]) <= UCHAR_MAX) {
+            printf("\'%c\' ", boo_token_get(item->rhs[i]));
         }
         else {
-            printf("%s ", grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name.data);
+            if(boo_token_get(item->rhs[i]) == BOO_ACCEPT) {
+                printf("$accept ");
+            }
+            else {
+                printf("%s ", grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name.data);
+            }
         }
     }
 
