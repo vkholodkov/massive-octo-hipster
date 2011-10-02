@@ -92,6 +92,8 @@ grammar_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
     boo_lalr1_item_t *item, *new_item;
     boo_rule_t *rule;
     boo_list_t add_queue;
+    u_char seen_token = 0;
+    u_char seen_nonterminal_in_core = 0;
 
     boo_list_init(&add_queue);
 
@@ -101,6 +103,10 @@ grammar_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
         item = boo_list_begin(&item_set->items);
 
         while(item != boo_list_end(&item_set->items)) {
+            if(item->core && item->pos != item->length && !boo_is_token(item->rhs[item->pos])) {
+                seen_nonterminal_in_core = 1;
+            }
+
             if(!item->closed) {
                 /*
                  * Find all items that have current position
@@ -127,6 +133,10 @@ grammar_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
 
                             grammar_item_from_rule(new_item, rule);
 
+                            if(rule->length != 0 && boo_is_token(rule->rhs[0])) {
+                                seen_token = 1;
+                            }
+
                             /*
                              * Book this rule (booking is only valid for the current item set)
                              */
@@ -148,6 +158,11 @@ grammar_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
          * Do until there is nothing more to close
          */
     } while(!boo_list_empty(&add_queue));
+
+    if(seen_nonterminal_in_core && !seen_token) {
+        fprintf(stderr, "cannot close an item set: grammar is incomplete\n");
+        return BOO_ERROR;
+    }
 
     return BOO_OK;
 }

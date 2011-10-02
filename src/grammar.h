@@ -14,7 +14,7 @@
 
 #define         boo_code_to_symbol(s)   (((s) & ~BOO_TOKEN) - BOO_START)
 #define         boo_symbol_to_code(s)   ((s) + BOO_START)
-#define         boo_token_get(x) ((x) & ~BOO_TOKEN)
+#define         boo_token_get(x)        ((x) & ~BOO_TOKEN)
 
 #define boo_is_token(x) (((x) & BOO_TOKEN) != 0)
 
