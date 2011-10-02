@@ -96,6 +96,9 @@ grammar_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
 
                             grammar_item_from_rule(new_item, rule);
 
+                            /*
+                             * Book this rule (booking is only valid for the current item set)
+                             */
                             rule->booked_by_item_set = item_set;
 
                             boo_list_append(&add_queue, &new_item->entry);
@@ -133,10 +136,6 @@ grammar_close_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
         if(rc == BOO_ERROR) {
             return rc;
         }
-
-        printf("Closed item set:\n");
-
-        grammar_dump_item_set(item_set);
 
         item_set = boo_list_next(item_set);
     }
@@ -333,6 +332,11 @@ boo_int_t grammar_generate_lr_item_sets(boo_grammar_t *grammar)
     return grammar_build_item_sets(grammar);
 }
 
+boo_int_t grammar_generate_lookahead_sets(boo_grammar_t *grammar)
+{
+    return BOO_OK;
+}
+
 static void
 grammar_dump_item(boo_lalr1_item_t *item) {
     boo_int_t i;
@@ -366,5 +370,25 @@ grammar_dump_item_set(boo_lalr1_item_set_t *item_set)
         grammar_dump_item(item);
 
         item = boo_list_next(item);
+    }
+}
+
+void grammar_dump_item_sets(boo_list_t *item_sets)
+{
+    boo_uint_t item_set_n = 0;
+    boo_lalr1_item_set_t *item_set;
+
+    item_set = boo_list_begin(item_sets);
+
+    while(item_set != boo_list_end(item_sets)) {
+
+        printf("Item set %d:\n", item_set_n);
+
+        grammar_dump_item_set(item_set);
+
+        printf("\n");
+
+        item_set = boo_list_next(item_set);
+        item_set_n++;
     }
 }

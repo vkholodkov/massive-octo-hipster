@@ -72,5 +72,6 @@ typedef struct {
 boo_grammar_t *grammar_create(pool_t*);
 void grammar_add_rule(boo_grammar_t*, boo_rule_t*);
 boo_int_t grammar_generate_lr_item_sets(boo_grammar_t*);
+void grammar_dump_item_sets(boo_list_t *item_sets);
 
 #endif

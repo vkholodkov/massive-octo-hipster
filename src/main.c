@@ -64,6 +64,8 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
         goto cleanup1;
     }
 
+    grammar_dump_item_sets(&grammar->item_sets);
+
 cleanup1:
     pool_destroy(tmp_pool);
 
