@@ -231,7 +231,7 @@ grammar_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set,
     item = boo_list_begin(&item_set->items);
 
     while(item != boo_list_end(&item_set->items)) {
-        if(item->pos != item->length &&
+        if(item->pos != item->length && boo_token_get(item->rhs[item->pos]) != BOO_ACCEPT &&
             !grammar_is_in_core_items(&grammar->item_sets, item, item->pos + 1) &&
             !grammar_is_in_core_items(item_sets, item, item->pos + 1))
         {
