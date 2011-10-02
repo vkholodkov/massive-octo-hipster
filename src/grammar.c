@@ -245,6 +245,8 @@ grammar_remove_duplicate_core_sets(boo_grammar_t *grammar, boo_list_t *item_sets
 
                 boo_list_remove(&item_set2->entry);
 
+                grammar->num_item_sets--;
+
                 item_set2 = tmp;
             }
             else {
@@ -288,6 +290,8 @@ grammar_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set,
                 *lookup = new_item_set;
 
                 boo_list_append(result_set, &new_item_set->entry);
+
+                grammar->num_item_sets++;
             }
 
             new_item = pcalloc(grammar->pool, sizeof(boo_lalr1_item_t));
@@ -408,6 +412,8 @@ boo_int_t grammar_generate_lr_item_sets(boo_grammar_t *grammar)
     boo_list_init(&root_item_set->items);
 
     boo_list_append(&grammar->item_sets, &root_item_set->entry);
+
+    grammar->num_item_sets++;
 
     root_item = pcalloc(grammar->pool, sizeof(boo_lalr1_item_t));
 
