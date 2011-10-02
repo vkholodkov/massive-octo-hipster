@@ -23,7 +23,7 @@ pool_t *pool_create() {
 
     if(p == NULL) {
         perror("malloc");
-        exit(255);
+        return NULL;
     }
 
     c = (pchunk_t*)(p + 1);
@@ -76,7 +76,7 @@ void *palloc(pool_t *pool, size_t size) {
 
     if(c == NULL) {
         perror("malloc");
-        exit(255);
+        return NULL;
     }
 
     start = (u_char*)c;

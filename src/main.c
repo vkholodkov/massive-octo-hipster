@@ -57,22 +57,34 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
         goto cleanup1;
     }
 
+    pool_destroy(tmp_pool);
+
+    result = grammar_wrapup(grammar);
+
+    if(result != BOO_OK) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
     result = grammar_generate_lr_item_sets(grammar);
 
     if(result != BOO_OK) {
         result = BOO_ERROR;
-        goto cleanup1;
+        goto cleanup;
     }
 
-    grammar_dump_item_sets(&grammar->item_sets);
+    grammar_dump_item_sets(grammar, &grammar->item_sets);
 
-cleanup1:
-    pool_destroy(tmp_pool);
+    result = BOO_OK;
 
 cleanup:
     pool_destroy(p);
 
     return result;
+
+cleanup1:
+    pool_destroy(tmp_pool);
+    goto cleanup;
 }
 
 static struct option long_options[] = {

@@ -16,10 +16,11 @@ typedef enum {
     s_lhs, s_rhs
 } parser_state_t;
 
-symbol_t *bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token)
+static symbol_t *
+bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token)
 {
     symbol_t *symbol;
-    boo_rule_t **lookup;
+    boo_lhs_lookup_t *lookup;
 
     symbol = symtab_resolve(grammar->symtab, token);
 
@@ -30,10 +31,17 @@ symbol_t *bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup,
             return NULL;
         }
 
-        symbol = symtab_add(grammar->symtab, token, grammar->num_symbols + UCHAR_MAX + 1);
+        symbol = symtab_add(grammar->symtab, token, boo_symbol_to_code(grammar->num_symbols));
 
         if(symbol == NULL) {
             return NULL;
+        }
+
+        /*
+         * Treat symbols in capitals as tokens
+         */
+        if(token->data[0] >= 'A' && token->data[0] <= 'Z') {
+            symbol->value |= BOO_TOKEN;
         }
 
         lookup = vector_append(lhs_lookup);
@@ -42,12 +50,29 @@ symbol_t *bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup,
             return NULL;
         }
 
-        *lookup = NULL;
+        lookup->rules = NULL;
+        lookup->name = symbol->name;
 
         grammar->num_symbols++;
     }
 
     return symbol;
+}
+
+static boo_int_t
+bootstrap_add_accept_symbol(boo_vector_t *rhs_vector)
+{
+    boo_uint_t *rhs;
+
+    rhs = vector_append(rhs_vector);
+
+    if(rhs == NULL) {
+        return BOO_ERROR;
+    }
+
+    *rhs = BOO_ACCEPT | BOO_TOKEN;
+
+    return BOO_OK;
 }
 
 boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *filename)
@@ -64,10 +89,11 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     symbol_t *symbol;
     boo_rule_t *rule;
     boo_uint_t *rhs;
-    boo_rule_t **lookup;
+    boo_lhs_lookup_t *lookup;
 
     state = s_lhs;
     has_lhs = 0;
+    lhs = 0;
 
     rhs_vector = vector_create(pool, sizeof(boo_uint_t), 8);
 
@@ -75,7 +101,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
         return BOO_ERROR;
     }
 
-    lhs_lookup = vector_create(pool, sizeof(void*), 256);
+    lhs_lookup = vector_create(pool, sizeof(boo_lhs_lookup_t), (UCHAR_MAX + 1) * 2);
 
     if(lhs_lookup == NULL) {
         return BOO_ERROR;
@@ -84,6 +110,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     fin = fopen((char*)filename->data, "r");
 
     if(fin == NULL) {
+        fprintf(stderr, "cannot open input file %s", filename->data);
         return BOO_ERROR;
     }
 
@@ -125,6 +152,14 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
             case s_rhs:
                 if(token.len == 1) {
                     if(token.data[0] == '|' || token.data[0] == ';') {
+
+                        if(lhs == BOO_START) {
+                            if(bootstrap_add_accept_symbol(rhs_vector) != BOO_OK)
+                            {
+                                goto cleanup;
+                            }
+                        }
+
                         rule = pcalloc(grammar->pool, sizeof(boo_rule_t));
 
                         if(rule == NULL) {
@@ -146,10 +181,10 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
 
                         lookup = lhs_lookup->elements;
 
-                        lookup += (lhs - UCHAR_MAX - 1);
+                        lookup += boo_code_to_symbol(lhs);
 
-                        rule->lhs_hash_next = *lookup;
-                        *lookup = rule;
+                        rule->lhs_hash_next = lookup->rules;
+                        lookup->rules = rule;
 
                         if(token.data[0] == ';') {
                             state = s_lhs;
@@ -177,13 +212,6 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                         }
 
                         *rhs = symbol->value;
-
-                        /*
-                         * Treat symbols in capitals as tokens
-                         */
-                        if(token.data[0] >= 'A' && token.data[0] <= 'Z') {
-                            *rhs |= BOO_TOKEN;
-                        }
                     }
                 }
                 
@@ -194,19 +222,13 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     /*
      * Copy left-hand side symbol lookup table to a permanent place
      */
-    grammar->lhs_lookup = palloc(grammar->pool, grammar->num_symbols * sizeof(boo_rule_t*));    
+    grammar->lhs_lookup = palloc(grammar->pool, (grammar->num_symbols + 1) * sizeof(boo_lhs_lookup_t));    
 
     if(grammar->lhs_lookup == NULL) {
         goto cleanup;
     }
 
-    memcpy(grammar->lhs_lookup, lhs_lookup->elements, grammar->num_symbols * sizeof(boo_rule_t*));
-
-    grammar->transition_lookup = pcalloc(grammar->pool, (grammar->num_symbols + UCHAR_MAX + 1) * sizeof(boo_lalr1_item_set_t*));    
-
-    if(grammar->transition_lookup == NULL) {
-        goto cleanup;
-    }
+    memcpy(grammar->lhs_lookup, lhs_lookup->elements, (grammar->num_symbols + 1) * sizeof(boo_lhs_lookup_t));
 
     fclose(fin);
     return BOO_OK;
