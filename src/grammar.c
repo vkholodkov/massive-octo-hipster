@@ -100,9 +100,6 @@ grammar_alloc_item_set(boo_grammar_t *grammar)
     if(grammar->reusable_item_sets != NULL) {
         is = grammar->reusable_item_sets;
         grammar->reusable_item_sets = is->next;
-#if 0
-        printf("Reusing item set %d\n", ((boo_lalr1_item_set_t*)is)->state_n);
-#endif
         return (boo_lalr1_item_set_t*)is;
     }
 
@@ -112,8 +109,6 @@ grammar_alloc_item_set(boo_grammar_t *grammar)
         return NULL;
     }
 
-    ((boo_lalr1_item_set_t*)is)->state_n = grammar->num_item_sets++;
-
     return (boo_lalr1_item_set_t*)is;
 }
 
@@ -121,9 +116,6 @@ static void
 grammar_free_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *s)
 {
     s->transitions = NULL;
-#if 0
-    printf("Freeing item set %d\n", s->state_n);
-#endif
     boo_free_item_set_t *is = (boo_free_item_set_t*)s;
     is->next = grammar->reusable_item_sets;
     grammar->reusable_item_sets = is;
@@ -433,6 +425,23 @@ grammar_find_transitions_for_set(boo_grammar_t *grammar, boo_list_t *item_sets, 
     return BOO_OK;
 }
 
+static void
+grammar_renumber_item_sets(boo_list_t *item_sets)
+{
+    boo_uint_t n = 0;
+
+    boo_lalr1_item_set_t *item_set;
+
+    item_set = boo_list_begin(item_sets);
+
+    while(item_set != boo_list_end(item_sets)) {
+
+        item_set->state_n = n++;
+
+        item_set = boo_list_next(item_set);
+    }
+}
+
 static boo_int_t
 grammar_build_item_sets(boo_grammar_t *grammar, boo_list_t *dest)
 {
@@ -478,6 +487,8 @@ grammar_build_item_sets(boo_grammar_t *grammar, boo_list_t *dest)
         }
     } while(!boo_list_empty(&add_queue));
 
+    grammar_renumber_item_sets(dest);
+
     return BOO_OK;
 }
 
@@ -496,8 +507,6 @@ boo_int_t grammar_generate_lr_item_sets(boo_grammar_t *grammar, boo_list_t *dest
     boo_list_init(&root_item_set->items);
 
     boo_list_append(dest, &root_item_set->entry);
-
-    root_item_set->state_n = grammar->num_item_sets++;
 
     root_rule = grammar->lhs_lookup[boo_code_to_symbol(BOO_START)].rules;
 
