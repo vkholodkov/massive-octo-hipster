@@ -5,6 +5,7 @@
 
 #include "boo.h"
 #include "grammar.h"
+#include "output.h"
 #include "string.h"
 #include "pool.h"
 
@@ -17,6 +18,7 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
     pool_t *p, *tmp_pool;
     boo_str_t *_filenames;
     boo_grammar_t *grammar;
+    boo_output_t *output;
 
     p = pool_create();
 
@@ -74,6 +76,41 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
     }
 
     grammar_dump_item_sets(grammar, &grammar->item_sets);
+
+    output = output_create(p);
+
+    if(output == NULL) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    result = output_add_grammar(output, grammar);
+
+    if(result != BOO_OK) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    result = output_base(output, grammar);
+
+    if(result != BOO_OK) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    result = output_action(output, grammar);
+
+    if(result != BOO_OK) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    result = output_check(output, grammar);
+
+    if(result != BOO_OK) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
 
     result = BOO_OK;
 

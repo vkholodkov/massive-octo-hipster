@@ -1,0 +1,5 @@
+*.d
+*.o
+.vimsession
+core
+booc

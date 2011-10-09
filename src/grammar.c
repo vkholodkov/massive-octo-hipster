@@ -426,7 +426,7 @@ grammar_find_transitions_for_set(boo_grammar_t *grammar, boo_list_t *item_sets, 
 }
 
 static void
-grammar_renumber_item_sets(boo_list_t *item_sets)
+grammar_renumber_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
 {
     boo_uint_t n = 0;
 
@@ -440,6 +440,8 @@ grammar_renumber_item_sets(boo_list_t *item_sets)
 
         item_set = boo_list_next(item_set);
     }
+
+    grammar->num_item_sets = n;
 }
 
 static boo_int_t
@@ -487,7 +489,7 @@ grammar_build_item_sets(boo_grammar_t *grammar, boo_list_t *dest)
         }
     } while(!boo_list_empty(&add_queue));
 
-    grammar_renumber_item_sets(dest);
+    grammar_renumber_item_sets(grammar, dest);
 
     return BOO_OK;
 }

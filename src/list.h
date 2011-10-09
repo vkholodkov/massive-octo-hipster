@@ -19,6 +19,7 @@ typedef struct {
 #define boo_list_next(p) (void*)(p)->entry.next
 
 #define boo_list_append(list, entry) boo_list_insert((list), (entry), &(list)->entries);
+
 #define boo_list_remove(entry) \
     do { \
         (entry)->next->prev = (entry)->prev; \
