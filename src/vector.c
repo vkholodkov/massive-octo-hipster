@@ -41,6 +41,8 @@ static boo_int_t vector_grow(boo_vector_t *v) {
 
     memcpy(v->elements, old_elements, v->nelements * v->element_size);
 
+    pfree(v->pool, old_elements);
+
     return BOO_OK;
 }
 
