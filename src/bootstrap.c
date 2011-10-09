@@ -12,12 +12,14 @@
 #include "vector.h"
 #include "grammar.h"
 
+#define BOO_LITERAL             1
+
 typedef enum {
     s_lhs, s_rhs
 } parser_state_t;
 
 static symbol_t *
-bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token)
+bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token, boo_uint_t flags)
 {
     symbol_t *symbol;
     boo_lhs_lookup_t *lookup;
@@ -40,7 +42,7 @@ bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t
         /*
          * Treat symbols in capitals as tokens
          */
-        if(token->data[0] >= 'A' && token->data[0] <= 'Z') {
+        if((token->data[0] >= 'A' && token->data[0] <= 'Z') || flags & BOO_LITERAL) {
             symbol->value |= BOO_TOKEN;
         }
 
@@ -70,7 +72,7 @@ bootstrap_add_accept_symbol(boo_vector_t *rhs_vector)
         return BOO_ERROR;
     }
 
-    *rhs = BOO_ACCEPT | BOO_TOKEN;
+    *rhs = BOO_EOF | BOO_TOKEN;
 
     return BOO_OK;
 }
@@ -90,6 +92,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     boo_rule_t *rule;
     boo_uint_t *rhs;
     boo_lhs_lookup_t *lookup;
+    boo_uint_t flags;
 
     state = s_lhs;
     has_lhs = 0;
@@ -135,7 +138,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     state = s_rhs;
                 }
                 else if(!has_lhs) {
-                    symbol = bootstrap_add_symbol(grammar, lhs_lookup, &token);
+                    symbol = bootstrap_add_symbol(grammar, lhs_lookup, &token, 0);
 
                     if(symbol == NULL) {
                         goto cleanup;
@@ -195,6 +198,8 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     }
                 }
                 else {
+                    flags = 0;
+
                     rhs = vector_append(rhs_vector);
 
                     if(rhs == NULL) {
@@ -202,17 +207,24 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     }
 
                     if(token.data[0] == '\'') {
-                        *rhs = token.data[1] | BOO_TOKEN;
-                    }
-                    else {
-                        symbol = bootstrap_add_symbol(grammar, lhs_lookup, &token);
-
-                        if(symbol == NULL) {
+                        if(token.len != 3) {
+                            fprintf(stderr, "Invalid token");
                             goto cleanup;
                         }
 
-                        *rhs = symbol->value;
+                        token.data++;
+                        token.len--;
+
+                        flags = BOO_LITERAL;
                     }
+
+                    symbol = bootstrap_add_symbol(grammar, lhs_lookup, &token, flags);
+
+                    if(symbol == NULL) {
+                        goto cleanup;
+                    }
+
+                    *rhs = symbol->value;
                 }
                 
                 break;
