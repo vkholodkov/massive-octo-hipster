@@ -10,6 +10,8 @@
 
 static size_t pagesize;
 
+static void *palloc_large(pool_t *pool, size_t size);
+
 void pool_init() {
     pagesize = sysconf(_SC_PAGESIZE);
 }
@@ -29,6 +31,7 @@ pool_t *pool_create() {
     c = (pchunk_t*)(p + 1);
 
     p->chunks = p->current = c;
+    p->large = NULL;
     c->next = NULL;
     
     start = (u_char*)p;
@@ -40,7 +43,15 @@ pool_t *pool_create() {
 }
 
 void pool_destroy(pool_t *pool) {
+    plarge_t *l;
     pchunk_t *c,*f;
+
+    l = pool->large;
+
+    while(l != NULL) {
+        free(l->mem);
+        l = l->next;
+    }
 
     c = pool->chunks;
     c = c->next;
@@ -59,6 +70,10 @@ void *palloc(pool_t *pool, size_t size) {
     pchunk_t *c;
     void *p;
     u_char *start;
+
+    if(size > (pagesize - sizeof(pchunk_t) - sizeof(pool_t))) {
+        return palloc_large(pool, size);
+    }
 
     c = pool->chunks;
 
@@ -113,3 +128,27 @@ u_char *pstrdup(pool_t *pool, u_char *str, size_t size) {
     return p;
 }
 
+static void *palloc_large(pool_t *pool, size_t size) {
+    void *mem;
+    plarge_t *large;
+
+    mem = malloc(size);
+
+    if(mem == NULL) {
+        perror("malloc");
+        return NULL;
+    }
+
+    large = palloc(pool, sizeof(plarge_t));
+
+    if(large == NULL) {
+        free(mem);
+        return NULL;
+    }
+
+    large->mem = mem;
+    large->next = pool->large;
+    pool->large = large;
+
+    return mem;
+}
