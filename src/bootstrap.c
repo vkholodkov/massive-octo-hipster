@@ -153,49 +153,51 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                 }
                 break;
             case s_rhs:
-                if(token.len == 1) {
-                    if(token.data[0] == '|' || token.data[0] == ';') {
-
-                        if(lhs == BOO_START) {
-                            if(bootstrap_add_accept_symbol(rhs_vector) != BOO_OK)
-                            {
-                                goto cleanup;
-                            }
-                        }
-
-                        rule = pcalloc(grammar->pool, sizeof(boo_rule_t));
-
-                        if(rule == NULL) {
+                if(token.len == 1 && (token.data[0] == '|' || token.data[0] == ';')) {
+                    if(lhs == BOO_START) {
+                        if(bootstrap_add_accept_symbol(rhs_vector) != BOO_OK)
+                        {
                             goto cleanup;
                         }
-
-                        rule->length = rhs_vector->nelements;
-                        rule->lhs = lhs;
-                        rule->rhs = palloc(grammar->pool, sizeof(boo_uint_t));
-                        rule->action = 0;
-
-                        if(rule->rhs == NULL) {
-                            goto cleanup;
-                        }
-
-                        memcpy(rule->rhs, rhs_vector->elements, rule->length * sizeof(boo_uint_t));
-
-                        grammar_add_rule(grammar, rule);
-
-                        lookup = lhs_lookup->elements;
-
-                        lookup += boo_code_to_symbol(lhs);
-
-                        rule->lhs_hash_next = lookup->rules;
-                        lookup->rules = rule;
-
-                        if(token.data[0] == ';') {
-                            state = s_lhs;
-                            has_lhs = 0;
-                        }
-
-                        vector_clear(rhs_vector);
                     }
+
+                    if(rhs_vector->nelements == 0) {
+                        fprintf(stderr, "zero length rule\n");
+                        goto cleanup;
+                    }
+
+                    rule = pcalloc(grammar->pool, sizeof(boo_rule_t));
+
+                    if(rule == NULL) {
+                        goto cleanup;
+                    }
+
+                    rule->length = rhs_vector->nelements;
+                    rule->lhs = lhs;
+                    rule->rhs = palloc(grammar->pool, rule->length * sizeof(boo_uint_t));
+                    rule->action = 0;
+
+                    if(rule->rhs == NULL) {
+                        goto cleanup;
+                    }
+
+                    memcpy(rule->rhs, rhs_vector->elements, rule->length * sizeof(boo_uint_t));
+
+                    grammar_add_rule(grammar, rule);
+
+                    lookup = lhs_lookup->elements;
+
+                    lookup += boo_code_to_symbol(lhs);
+
+                    rule->lhs_hash_next = lookup->rules;
+                    lookup->rules = rule;
+
+                    if(token.data[0] == ';') {
+                        state = s_lhs;
+                        has_lhs = 0;
+                    }
+
+                    vector_clear(rhs_vector);
                 }
                 else {
                     flags = 0;
@@ -213,7 +215,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                         }
 
                         token.data++;
-                        token.len--;
+                        token.len -= 2;
 
                         flags = BOO_LITERAL;
                     }

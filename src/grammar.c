@@ -5,7 +5,6 @@
 
 static const boo_str_t accept_symbol_name = boo_string("$accept");
 
-static void grammar_dump_item(boo_grammar_t*, boo_lalr1_item_t*);
 static void grammar_dump_item_set(boo_grammar_t*, boo_lalr1_item_set_t*);
 
 boo_grammar_t *grammar_create(pool_t *p)
@@ -23,12 +22,15 @@ boo_grammar_t *grammar_create(pool_t *p)
     boo_list_init(&grammar->rules);
     boo_list_init(&grammar->actions);
     boo_list_init(&grammar->item_sets);
+    boo_list_init(&grammar->reverse_item_sets);
 
     grammar->symtab = symtab_create(p);
 
     if(grammar->symtab == NULL) {
         return NULL;
     }
+
+    grammar->lookahead_set = NULL;
 
     return grammar;
 }
@@ -71,6 +73,8 @@ void grammar_add_rule(boo_grammar_t *grammar, boo_rule_t *rule)
 {
     boo_int_t i;
 
+    rule->rule_n = grammar->num_rules++;
+
     boo_list_append(&grammar->rules, &rule->entry);
 
     printf("%x -> ", rule->lhs);
@@ -85,6 +89,7 @@ void grammar_add_rule(boo_grammar_t *grammar, boo_rule_t *rule)
 static void
 grammar_item_from_rule(boo_lalr1_item_t *item, boo_rule_t *rule)
 {
+    item->rule_n = rule->rule_n;
     item->lhs = rule->lhs;
     item->rhs = rule->rhs;
     item->length = rule->length;
@@ -92,7 +97,7 @@ grammar_item_from_rule(boo_lalr1_item_t *item, boo_rule_t *rule)
     item->transition = NULL;
 }
 
-static boo_lalr1_item_set_t*
+boo_lalr1_item_set_t*
 grammar_alloc_item_set(boo_grammar_t *grammar)
 {
     boo_free_item_set_t *is;
@@ -112,8 +117,7 @@ grammar_alloc_item_set(boo_grammar_t *grammar)
     return (boo_lalr1_item_set_t*)is;
 }
 
-static void
-grammar_free_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *s)
+void grammar_free_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *s)
 {
     s->transitions = NULL;
     boo_free_item_set_t *is = (boo_free_item_set_t*)s;
@@ -229,8 +233,7 @@ grammar_close_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
     return BOO_OK;
 }
 
-static boo_int_t
-grammar_core_sets_match(boo_lalr1_item_set_t *item_set1, boo_lalr1_item_set_t *item_set2)
+boo_int_t grammar_core_sets_match(boo_lalr1_item_set_t *item_set1, boo_lalr1_item_set_t *item_set2)
 {
     boo_lalr1_item_t *item1;
     boo_lalr1_item_t *item2;
@@ -369,6 +372,7 @@ grammar_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set,
                 return BOO_ERROR;
             }
 
+            new_item->rule_n = item->rule_n;
             new_item->lhs = item->lhs;
             new_item->length = item->length;
             new_item->rhs = item->rhs;
@@ -540,8 +544,7 @@ boo_int_t grammar_generate_lookahead_sets(boo_grammar_t *grammar)
     return BOO_OK;
 }
 
-static void
-grammar_dump_item(boo_grammar_t *grammar, boo_lalr1_item_t *item) {
+void grammar_dump_item(boo_grammar_t *grammar, boo_lalr1_item_t *item) {
     boo_int_t i;
 
     printf(item->core ? "%s -> " : "+%s -> ",
@@ -557,11 +560,13 @@ grammar_dump_item(boo_grammar_t *grammar, boo_lalr1_item_t *item) {
                 printf("$eof ");
             }
             else {
-                printf("%s ", grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name.data);
+                boo_puts(stdout, &grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name);
+                fputc(' ', stdout);
             }
         }
         else {
-            printf("%s ", grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name.data);
+            boo_puts(stdout, &grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name);
+            fputc(' ', stdout);
         }
     }
 

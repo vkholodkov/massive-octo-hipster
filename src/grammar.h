@@ -7,6 +7,7 @@
 #include "pool.h"
 #include "list.h"
 #include "symtab.h"
+#include "trie.h"
 
 #define         BOO_TOKEN               0x80000000
 #define         BOO_EOF                 0
@@ -48,6 +49,7 @@ typedef struct {
     boo_list_t              item_sets;
     boo_list_t              reverse_item_sets;
 
+    boo_uint_t              num_rules;
     boo_uint_t              num_item_sets;
     boo_uint_t              num_symbols;
 
@@ -56,11 +58,14 @@ typedef struct {
     boo_trans_lookup_t      *first_used_trans;
 
     void                    *reusable_item_sets;
+
+    boo_trie_t              *lookahead_set;
 } boo_grammar_t;
 
 typedef struct boo_rule_s {
     boo_list_entry_t        entry;
 
+    boo_uint_t              rule_n;
     boo_uint_t              length;
     boo_uint_t              lhs;
     boo_uint_t              *rhs;
@@ -98,6 +103,7 @@ typedef struct boo_lalr1_item_set_s {
 typedef struct {
     boo_list_entry_t        entry;
 
+    boo_uint_t              rule_n;
     boo_uint_t              length;
     boo_uint_t              pos;
     boo_uint_t              lhs;
@@ -116,5 +122,12 @@ boo_int_t grammar_wrapup(boo_grammar_t*);
 void grammar_add_rule(boo_grammar_t*, boo_rule_t*);
 boo_int_t grammar_generate_lr_item_sets(boo_grammar_t*, boo_list_t*);
 void grammar_dump_item_sets(boo_grammar_t*, boo_list_t*);
+
+boo_lalr1_item_set_t*
+grammar_alloc_item_set(boo_grammar_t*);
+void grammar_free_item_set(boo_grammar_t*, boo_lalr1_item_set_t*);
+boo_int_t grammar_core_sets_match(boo_lalr1_item_set_t*, boo_lalr1_item_set_t*);
+
+void grammar_dump_item(boo_grammar_t*, boo_lalr1_item_t*);
 
 #endif

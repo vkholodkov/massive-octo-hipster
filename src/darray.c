@@ -28,15 +28,15 @@ boo_int_t darray_get_base(darray_t *d, boo_int_t i) {
     return (i < d->ncells) ? d->cells[i].base : BOO_ERROR;
 }
 
-static boo_int_t darray_get_check(darray_t *d, boo_int_t i) {
+boo_int_t darray_get_check(darray_t *d, boo_int_t i) {
     return (i < d->ncells) ? d->cells[i].check : BOO_ERROR;
 }
 
-static boo_uint_t darray_get_leaf(darray_t *d, boo_int_t i) {
+boo_uint_t darray_get_leaf(darray_t *d, boo_int_t i) {
     return (i < d->ncells) ? d->cells[i].leaf : 0;
 }
 
-static void darray_set_base(darray_t *d, boo_int_t i, boo_int_t val) {
+void darray_set_base(darray_t *d, boo_int_t i, boo_int_t val) {
     if (i < d->ncells) {
         d->cells[i].base = val;
     }
@@ -48,17 +48,15 @@ static void darray_set_check(darray_t *d, boo_int_t i, boo_int_t val) {
     }
 }
 
-static void darray_set_leaf(darray_t *d, boo_int_t i, boo_uint_t leaf) {
+void darray_set_leaf(darray_t *d, boo_int_t i, boo_uint_t leaf) {
     if (i < d->ncells) {
         d->cells[i].leaf = leaf;
     }
 }
 
-/*
-static boo_int_t darray_is_leaf(darray_t *d, boo_int_t i) {
+boo_int_t darray_is_leaf(darray_t *d, boo_int_t i) {
     return darray_get_base(d, i) < 0;
 }
-*/
 
 static boo_int_t darray_is_free(darray_t *d, boo_int_t i) {
     return darray_get_base(d, i) < 0 && darray_get_check(d, i) < 0;
@@ -140,7 +138,7 @@ darray_t *darray_create(pool_t *pool, boo_uint_t max_symbols) {
     d->cells[2].base = 3;
     d->cells[2].check = 0;
 
-    for(i = 3; i < d->nallocated; i++) {
+    for(i = 3; i != (d->nallocated - 1); i++) {
         darray_set_check(d, i, -(i + 1));
         darray_set_base(d, i + 1, -i);
     }
@@ -151,7 +149,7 @@ darray_t *darray_create(pool_t *pool, boo_uint_t max_symbols) {
     return d;
 }
 
-static boo_int_t darray_walk(darray_t *d, boo_int_t *pi, char c) {
+boo_int_t darray_walk(darray_t *d, boo_int_t *pi, char c) {
     boo_int_t next;
 
     next = darray_get_base(d, *pi) + c;
@@ -177,7 +175,7 @@ static void darray_save_symbols(darray_t *d, darray_symbols_t *symbols, boo_int_
     }
 }
 
-static boo_int_t darray_insert_branch(darray_t *d, darray_symbols_t *symbols, boo_int_t s, boo_int_t c) {
+boo_int_t darray_insert_branch(darray_t *d, darray_symbols_t *symbols, boo_int_t s, boo_int_t c) {
     boo_int_t       base, next;
     boo_int_t       new_base;
 
@@ -228,6 +226,10 @@ static boo_int_t darray_insert_branch(darray_t *d, darray_symbols_t *symbols, bo
 
 static boo_int_t darray_symbols_fit(darray_t *d, boo_int_t base, darray_symbols_t *symbols) {
     boo_uint_t      i;
+
+    if(base < DARRAY_POOL_BEGIN) {
+        return 0;
+    }
 
     for(i=0;i < symbols->num_symbols;i++) {
         if(base + symbols->symbols[i] >= d->ncells) {
@@ -300,12 +302,14 @@ static boo_int_t darray_expand(darray_t *d) {
 
     memcpy(d->cells, old_cells, old_allocated*sizeof(da_cell_t));
 
+    pfree(d->pool, old_cells);
+
     new_begin = d->ncells;
     d->ncells = d->nallocated;
 
-    for(i = new_begin; i != (d->nallocated - 1); i++) {
-        darray_set_check(d, i, -(i + 1));
-        darray_set_base(d, i + 1, -i);
+    for(i = new_begin + 1; i != d->nallocated; i++) {
+        darray_set_check(d, i - 1, -i);
+        darray_set_base(d, i, -(i - 1));
     }
 
     free_leaf = -darray_get_base(d, darray_get_free_list(d));
@@ -352,52 +356,9 @@ static void darray_relocate_base(darray_t *d, darray_symbols_t *symbols, boo_int
     darray_set_base(d, state, new_base);
 }
 
-#if 0
-static boo_int_t trie_add_branch(boo_trie_t *t, boo_int_t node, boo_uint_t *suffix, boo_uint_t *end, void *data) {
-    boo_int_t       new_node;
-    boo_uint_t      sym;
-    boo_uint_t      l;
-
-    while(suffix != end) {
-        sym = trie_symbol_map(&t->symbols, *suffix);
-
-        new_node = darray_insert_branch(t->darray, &t->darray->symbols, node, sym);
-
-        if(new_node == BOO_ERROR) {
-            return BOO_ERROR;
-        }
-
-        suffix++;
-
-        node = new_node;
-    }
-
-    darray_set_base(t->darray, new_node, -1);
-
-    if(trie_add_leaf(t, new_node, data) != BOO_OK) {
-        return BOO_ERROR;
-    }
-
-    for(l=0;l<t->symbols.num_symbols;l++) {
-        printf("[%i]:%i;", l + 1, t->symbols.symbols[l]);
-    }
-    printf("\n");
-    for(l=0;l<t->darray->ncells;l++) {
-        if(t->darray->cells[l].base >= 0 || t->darray->cells[l].check >= 0) {
-            printf("[%i]:%i %i;", l, t->darray->cells[l].base, t->darray->cells[l].check);
-        }
-    }
-    printf("\n");
-
-    return BOO_OK;
-}
-#endif
-
 boo_int_t darray_insert(darray_t *d, boo_uint_t state, boo_uint_t sym, boo_uint_t leaf) {
     boo_int_t       new_node;
     boo_int_t       i;
-
-    printf("Adding symbol %d to state %d (transition to %d)\n", sym, state, leaf);
 
     i = darray_get_root(d);
 
@@ -426,13 +387,6 @@ boo_int_t darray_insert(darray_t *d, boo_uint_t state, boo_uint_t sym, boo_uint_
     }
 
     darray_set_leaf(d, i, leaf);
-
-    for(i=0;i<d->ncells;i++) {
-        if(d->cells[i].base >= 0 || d->cells[i].check >= 0) {
-            printf("[%i]:%i %i;", i, d->cells[i].base, d->cells[i].check);
-        }
-    }
-    printf("\n");
 
     return BOO_OK;
 }

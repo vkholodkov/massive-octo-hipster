@@ -71,6 +71,11 @@ void *palloc(pool_t *pool, size_t size) {
     void *p;
     u_char *start;
 
+    if(size == 0) {
+        fprintf(stderr, "zero size allocation\n");
+        abort();
+    }
+
     if(size > (pagesize - sizeof(pchunk_t) - sizeof(pool_t))) {
         return palloc_large(pool, size);
     }
@@ -78,7 +83,7 @@ void *palloc(pool_t *pool, size_t size) {
     c = pool->chunks;
 
     while(c != NULL) {
-        if(c->end - c->allocated < size) {
+        if((c->allocated + size) <= c->end) {
             p = c->allocated;
             c->allocated += size;
             return p;
@@ -87,6 +92,7 @@ void *palloc(pool_t *pool, size_t size) {
         c = c->next;
     }
 
+    fprintf(stderr, "malloc: %u\n", pagesize);
     c = malloc(pagesize);
 
     if(c == NULL) {
@@ -131,6 +137,8 @@ u_char *pstrdup(pool_t *pool, u_char *str, size_t size) {
 static void *palloc_large(pool_t *pool, size_t size) {
     void *mem;
     plarge_t *large;
+
+    fprintf(stderr, "alloc large size=%u\n", size);
 
     mem = malloc(size);
 

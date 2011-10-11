@@ -5,6 +5,7 @@
 
 #include "boo.h"
 #include "grammar.h"
+#include "lookahead.h"
 #include "output.h"
 #include "string.h"
 #include "pool.h"
@@ -75,7 +76,22 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
         goto cleanup;
     }
 
+    result = lookahead_generate_item_sets(grammar, &grammar->reverse_item_sets);
+
+    if(result != BOO_OK) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    result = lookahead_build(grammar, &grammar->reverse_item_sets);
+
+    if(result != BOO_OK) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
     grammar_dump_item_sets(grammar, &grammar->item_sets);
+    grammar_dump_item_sets(grammar, &grammar->reverse_item_sets);
 
     output = output_create(p);
 

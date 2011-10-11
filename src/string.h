@@ -2,6 +2,7 @@
 #ifndef _STRING_
 #define _STRING_
 
+#include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
 
@@ -19,6 +20,8 @@ typedef struct {
 
 u_char *boo_strcpy(u_char*,boo_str_t*);
 int boo_const_strequ(boo_str_t*, const char*);
+
+void boo_puts(FILE*,boo_str_t*);
 
 #endif //_STRING_
 

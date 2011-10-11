@@ -24,3 +24,15 @@ int boo_const_strequ(boo_str_t *s1, const char *s2) {
 
     return 1;
 }
+
+void boo_puts(FILE *out, boo_str_t *s) {
+    u_char *p, *q;
+
+    p = s->data;
+    q = p + s->len;
+
+    while(p != q) {
+        fputc(*p, out);
+        p++;
+    }
+}
