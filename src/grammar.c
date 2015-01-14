@@ -605,6 +605,10 @@ void grammar_dump_item(boo_grammar_t *grammar, boo_lalr1_item_t *item) {
         printf(" -- goto %d", item->transition->item_set->state_n);
     }
 
+    if(item->remove != 0) {
+        printf(" remove %d", item->remove);
+    }
+
     printf("\n");
 }
 

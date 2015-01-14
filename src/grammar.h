@@ -117,6 +117,11 @@ typedef struct {
 
     boo_transition_t        *transition;
 
+    /*
+     * How many items to remove from the stack
+     */
+    boo_uint_t              remove;
+
     unsigned                closed:1;
     unsigned                core:1;
 } boo_lalr1_item_t;

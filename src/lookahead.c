@@ -27,6 +27,7 @@ lookahead_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
     boo_list_t add_queue;
     u_char seen_token = 0;
     u_char seen_nonterminal_in_core = 0;
+    boo_uint_t i, num_nonterminals;
 
     boo_list_init(&add_queue);
 
@@ -69,6 +70,16 @@ lookahead_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
                             if(rule->length != 0 && boo_is_token(rule->rhs[0])) {
                                 seen_token = 1;
                             }
+
+                            num_nonterminals = 0;
+
+                            for(i = 0 ; i != new_item->length ; i++) {
+                                if(boo_is_token(new_item->rhs[i])) {
+                                    num_nonterminals++;
+                                }
+                            }
+
+                            new_item->remove = item->remove + num_nonterminals;
 
                             /*
                              * Book this rule (booking is only valid for the current item set)
