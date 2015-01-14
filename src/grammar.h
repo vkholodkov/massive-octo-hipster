@@ -7,7 +7,7 @@
 #include "pool.h"
 #include "list.h"
 #include "symtab.h"
-#include "trie.h"
+#include "tree.h"
 
 #define         BOO_TOKEN               0x80000000
 #define         BOO_EOF                 0
@@ -61,6 +61,7 @@ typedef struct {
     void                    *reusable_item_sets;
 
     boo_trie_t              *lookahead_set;
+    boo_trie_t              *core_set_index;
 } boo_grammar_t;
 
 typedef struct boo_rule_s {

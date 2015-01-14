@@ -35,6 +35,12 @@ boo_grammar_t *grammar_create(pool_t *p)
 
     grammar->lookahead_set = NULL;
 
+    grammar->core_set_index = tree_create(p);
+
+    if(grammar->core_set_index == NULL) {
+        return NULL;
+    }
+
     return grammar;
 }
 
@@ -475,6 +481,93 @@ grammar_renumber_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
     grammar->num_item_sets = n;
 }
 
+/*
+ * Add an item to core set index
+ */
+static boo_int_t
+grammar_add_item_to_core_set_index(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t state_n)
+{
+    boo_trie_node_t *n;
+    boo_trie_t *t = grammar->core_set_index;
+    boo_uint_t *p, *q, symbol;
+
+    /*
+     * Add an element corresponding to the left-hand-side
+     */
+    n = boo_trie_add_sequence(t, t->root, &item->lhs, &item->lhs + 1);
+
+    if(n == NULL) {
+        return BOO_ERROR;
+    }
+
+    /*
+     * Add all symbols of the right-hand-side
+     */
+    p = item->rhs;
+    q = p + item->length;
+
+    while(p != q) {
+        symbol = boo_token_get(*p);
+
+        n = boo_trie_add_sequence(t, n, &symbol, &symbol + 1);
+
+        if(n == NULL) {
+            return BOO_ERROR;
+        }
+
+        p++;
+    }
+
+    /*
+     * Add an element corresponding to the position
+     */
+    n = boo_trie_add_sequence(t, n, &item->pos, &item->pos + 1);
+
+    if(n == NULL) {
+        return BOO_ERROR;
+    }
+
+    /*
+     * We've reached a leaf of the trie,
+     * set it to the state number
+     */
+    n->leaf = state_n;
+
+    return BOO_OK;
+}
+
+static boo_int_t
+grammar_add_to_core_set_index(boo_grammar_t *grammar, boo_list_t *item_sets)
+{
+    boo_int_t rc;
+    boo_lalr1_item_set_t *item_set;
+    boo_lalr1_item_t *item;
+
+    item_set = boo_list_begin(item_sets);
+
+    while(item_set != boo_list_end(item_sets)) {
+
+        item = boo_list_begin(&item_set->items);
+
+        while(item != boo_list_end(&item_set->items)) {
+
+            if(item->core) {
+                rc = grammar_add_item_to_core_set_index(grammar, item, item_set->state_n);
+
+                if(rc != BOO_OK) {
+                    return rc;
+                }
+            }
+
+            item = boo_list_next(item);
+        }
+
+        item_set = boo_list_next(item_set);
+    }
+
+    return BOO_OK;
+}
+
 static boo_int_t
 grammar_build_item_sets(boo_grammar_t *grammar, boo_list_t *dest)
 {
@@ -522,7 +615,7 @@ grammar_build_item_sets(boo_grammar_t *grammar, boo_list_t *dest)
 
     grammar_renumber_item_sets(grammar, dest);
 
-    return BOO_OK;
+    return grammar_add_to_core_set_index(grammar, dest);
 }
 
 boo_int_t grammar_generate_lr_item_sets(boo_grammar_t *grammar, boo_list_t *dest)

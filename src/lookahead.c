@@ -6,7 +6,7 @@
 void grammar_dump_item_set(boo_grammar_t*, boo_lalr1_item_set_t*);
 
 static boo_int_t
-lookahead_add_item(boo_grammar_t*, boo_lalr1_item_t*, boo_uint_t);
+lookahead_add_item(boo_grammar_t*, boo_lalr1_item_t*, boo_uint_t, boo_uint_t);
 
 static void
 lookahead_item_from_rule(boo_lalr1_item_t *item, boo_rule_t *rule)
@@ -390,7 +390,8 @@ lookahead_add_first_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set, 
     while(item != boo_list_end(&item_set->items)) {
         if(item->pos != item->length && boo_is_token(item->rhs[item->pos]))
         {
-            rc = lookahead_add_item(grammar, dest, boo_token_get(item->rhs[item->pos]));
+            rc = lookahead_add_item(grammar, dest,
+                boo_token_get(item->rhs[item->pos]), item_set->state_n);
 
             if(rc != BOO_OK) {
                 return rc;
@@ -437,70 +438,96 @@ lookahead_find_first_set(boo_grammar_t *grammar, boo_lalr1_item_t *v, boo_lalr1_
 }
 
 static boo_int_t
-lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sym)
+lookahead_lookup_state(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t *state)
 {
-    boo_int_t i, new_node;
-    boo_trie_t *t = grammar->lookahead_set;
-    boo_uint_t *p, *q;
+    boo_trie_t *t = grammar->core_set_index;
+    boo_trie_node_t *n;
+    boo_uint_t *p, *q, symbol;
 
-    i = darray_get_root(t->darray);
+    if(state == NULL) {
+        return BOO_DECLINED;
+    }
 
-    /*
-     * Add an element corresponding to the position
-     */
-    if(darray_walk(t->darray, &i, item->lhs) != DARRAY_TRIE_MORE) {
-        new_node = darray_insert_branch(t->darray, &t->darray->symbols, i, item->lhs);
+    n = boo_trie_next(t, t->root, item->lhs);
 
-        if(new_node == BOO_ERROR) {
-            return BOO_ERROR;
+    if(n == NULL) {
+        return BOO_DECLINED;
+    }
+
+    p = item->rhs;
+    q = p + item->length;
+
+    while(p != q) {
+        symbol = boo_token_get(*p);
+
+        n = boo_trie_next(t, n, symbol);
+
+        if(n == NULL) {
+            return BOO_DECLINED;
         }
 
-        i = new_node;
+        p++;
+    }
+
+    n = boo_trie_next(t, n, item->pos + 1);
+
+    if(n == NULL || state == NULL) {
+        return BOO_DECLINED;
+    }
+
+    *state = n->leaf;
+
+    return BOO_OK;
+}
+
+static boo_int_t
+lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sym, boo_uint_t state)
+{
+    boo_trie_t *t = grammar->lookahead_set;
+    boo_trie_node_t *n;
+    boo_uint_t *p, *q, symbol;
+
+    /*
+     * Add an element corresponding to the left-hand-side
+     */
+    n = boo_trie_add_sequence(t, t->root, &item->lhs, &item->lhs + 1);
+
+    if(n == NULL) {
+        return BOO_ERROR;
     }
 
     /*
-     * Add all symbols of the rule
+     * Add all symbols of the right-hand-side
      */
     p = item->rhs;
     q = p + item->length;
 
-    for(;p != q;p++) {
-        if(darray_walk(t->darray, &i, boo_token_get(*p)) != BOO_TRIE_MORE) {
-            new_node = darray_insert_branch(t->darray, &t->darray->symbols, i, boo_token_get(*p));
+    while(p != q) {
+        symbol = boo_token_get(*p);
 
-            if(new_node == BOO_ERROR) {
-                return BOO_ERROR;
-            }
+        n = boo_trie_add_sequence(t, n, &symbol, &symbol + 1);
 
-            i = new_node;
-        }
-    }
-
-    /*
-     * Add an element corresponding to lookahead symbol
-     */
-    if(darray_walk(t->darray, &i, sym) != DARRAY_TRIE_MORE) {
-        new_node = darray_insert_branch(t->darray, &t->darray->symbols, i, sym);
-
-        if(new_node == BOO_ERROR) {
+        if(n == NULL) {
             return BOO_ERROR;
         }
 
-        i = new_node;
+        p++;
+    }
+
+    /*
+     * Add an element corresponding to the lookahead symbol
+     */
+    n = boo_trie_add_sequence(t, n, &sym, &sym + 1);
+
+    if(n == NULL) {
+        return BOO_ERROR;
     }
 
     /*
      * We've reached a leaf of the trie
      */
-    darray_set_leaf(t->darray, i, 0);
-#if 0
-    for(i=0;i<t->darray->ncells;i++) {
-        if(t->darray->cells[i].base >= 0 || t->darray->cells[i].check >= 0) {
-            printf("[%i]:%i %i;", i, t->darray->cells[i].base, t->darray->cells[i].check);
-        }
-    }
-    printf("\n");
-#endif
+    n->leaf = state;
+
     return BOO_OK;
 }
 
@@ -510,19 +537,40 @@ lookahead_add_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
     boo_int_t rc;
     boo_lalr1_item_t *item1, *item2;
     boo_uint_t sym;
+    boo_uint_t state;
 
     item1 = boo_list_begin(&item_set->items);
     
     while(item1 != boo_list_end(&item_set->items)) {
         if(item1->pos != item1->length) {
+            /*
+             * Check if the symbol next to the current position is a token
+             */
             if(boo_is_token(item1->rhs[item1->pos])) {
                 sym = boo_token_get(item1->rhs[item1->pos]);
 
+                if(sym != BOO_EOF) {
+                    rc = lookahead_lookup_state(grammar, item1, &state);
+
+                    if(rc != BOO_OK) {
+                        fprintf(stdout, "Cannot resolve state of item ");
+                        grammar_dump_item(grammar, item1);
+                        return BOO_ERROR;
+                    }
+                }
+                else {
+                    state = 0;
+                }
+
                 item2 = boo_list_begin(&item_set->items);
 
+                /*
+                 * Scan over items of the item set and add those
+                 * that have the marker at the end to the dictionary
+                 */
                 while(item2 != boo_list_end(&item_set->items)) {
                     if(item2->pos == item2->length) {
-                        rc = lookahead_add_item(grammar, item2, sym);
+                        rc = lookahead_add_item(grammar, item2, sym, state);
 
                         if(rc == BOO_ERROR) {
                             return rc;
@@ -567,7 +615,7 @@ boo_int_t lookahead_build(boo_grammar_t *grammar, boo_list_t *item_sets)
     boo_int_t rc;
     boo_lalr1_item_set_t *item_set;
 
-    grammar->lookahead_set = trie_create(grammar->pool);
+    grammar->lookahead_set = tree_create(grammar->pool);
 
     if(grammar->lookahead_set == NULL) {
         return BOO_ERROR;
