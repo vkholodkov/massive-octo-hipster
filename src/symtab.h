@@ -9,6 +9,7 @@ typedef struct symbol {
     struct symbol       *next;
     boo_str_t           name;
     boo_uint_t          value;
+    boo_uint_t          line;
     ssize_t             offset;
 } symbol_t;
 

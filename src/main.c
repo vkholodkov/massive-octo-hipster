@@ -76,6 +76,9 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
         goto cleanup;
     }
 
+    printf("LR item sets:\n");
+    grammar_dump_item_sets(grammar, &grammar->item_sets);
+
     result = lookahead_generate_item_sets(grammar, &grammar->reverse_item_sets);
 
     if(result != BOO_OK) {
@@ -89,10 +92,10 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
         result = BOO_ERROR;
         goto cleanup;
     }
-
-    grammar_dump_item_sets(grammar, &grammar->item_sets);
+#if 1
+    printf("Lookahead item sets:\n");
     grammar_dump_item_sets(grammar, &grammar->reverse_item_sets);
-
+#endif
     output = output_create(p);
 
     if(output == NULL) {
@@ -147,13 +150,13 @@ static struct option long_options[] = {
 
 int main(int argc, char *argv[]) {
     int                 c;
-    int                 this_option_optind;
+//    int                 this_option_optind;
     int                 option_index;
 
     pool_init();
 
     while(1) {
-        this_option_optind = optind ? optind : 1;
+//        this_option_optind = optind ? optind : 1;
         option_index = 0;
 
         c = getopt_long(argc, argv, "b:do:v", long_options, &option_index);

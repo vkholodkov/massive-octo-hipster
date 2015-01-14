@@ -385,6 +385,16 @@ boo_int_t darray_insert(darray_t *d, boo_uint_t state, boo_uint_t sym, boo_uint_
 
         i = new_node;
     }
+#if 0
+    else {
+        /*
+         * A conflict has been detected
+         */
+        darray_get_leaf();
+
+        return BOO_DECLINED;
+    }
+#endif
 
     darray_set_leaf(d, i, leaf);
 

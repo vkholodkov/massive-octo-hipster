@@ -18,3 +18,12 @@ void boo_list_insert(boo_list_t *list, boo_list_entry_t *p, boo_list_entry_t *be
     before->prev->next = p;
     before->prev = p;
 }
+
+void boo_list_insert_after(boo_list_t *list, boo_list_entry_t *p, boo_list_entry_t *after)
+{
+    p->next = after->next;
+    p->prev = after;
+
+    after->next->prev = p;
+    after->next = p;
+}

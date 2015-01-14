@@ -17,7 +17,9 @@ typedef struct {
 #define boo_list_begin(list) (void*)(list)->entries.next
 #define boo_list_end(list) (void*)&((list)->entries)
 #define boo_list_next(p) (void*)(p)->entry.next
+#define boo_list_prev(p) (void*)(p)->entry.prev
 
+#define boo_list_prepend(list, entry) boo_list_insert_after((list), (entry), &(list)->entries);
 #define boo_list_append(list, entry) boo_list_insert((list), (entry), &(list)->entries);
 
 #define boo_list_remove(entry) \
@@ -38,5 +40,6 @@ typedef struct {
 
 void boo_list_init(boo_list_t*);
 void boo_list_insert(boo_list_t*, boo_list_entry_t*, boo_list_entry_t*);
+void boo_list_insert_after(boo_list_t*, boo_list_entry_t*, boo_list_entry_t*);
 
 #endif

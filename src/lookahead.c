@@ -3,6 +3,8 @@
 
 #include "grammar.h"
 
+void grammar_dump_item_set(boo_grammar_t*, boo_lalr1_item_set_t*);
+
 static boo_int_t
 lookahead_add_item(boo_grammar_t*, boo_lalr1_item_t*, boo_uint_t);
 
@@ -229,7 +231,7 @@ lookahead_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_se
     lookup = grammar->first_used_trans;
 
     while(lookup != NULL) {
-        boo_list_append(result_set, &lookup->item_set->entry);
+        boo_list_prepend(result_set, &lookup->item_set->entry);
 
         lookup->item_set = NULL;
         lookup->transition = NULL;
@@ -278,13 +280,19 @@ lookahead_build_item_sets(boo_grammar_t *grammar, boo_list_t *dest)
     if(rc == BOO_ERROR) {
         return BOO_ERROR;
     }
-
+#if 0
+    printf("closed item set\n");
+    grammar_dump_item_sets(grammar, dest);
+#endif
     rc = lookahead_find_transitions_for_set(grammar, dest, &add_queue);
 
     if(rc == BOO_ERROR) {
         return BOO_ERROR;
     }
-
+#if 0
+    printf("transitions\n");
+    grammar_dump_item_sets(grammar, dest);
+#endif
     do {
         boo_list_splice(&to_process, &add_queue);
 
@@ -293,7 +301,10 @@ lookahead_build_item_sets(boo_grammar_t *grammar, boo_list_t *dest)
         if(rc == BOO_ERROR) {
             return BOO_ERROR;
         }
-
+#if 0
+        printf("+closed item set\n");
+        grammar_dump_item_sets(grammar, dest);
+#endif
         rc = lookahead_find_transitions_for_set(grammar, &to_process, &add_queue);
 
         if(rc == BOO_ERROR) {
@@ -360,9 +371,9 @@ lookahead_add_first_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set, 
 {
     boo_int_t rc;
     boo_lalr1_item_t *item;
-
+#if 0
     grammar_dump_item(grammar, dest);
-
+#endif
     item = boo_list_begin(&item_set->items);
 
     while(item != boo_list_end(&item_set->items)) {
@@ -471,14 +482,14 @@ lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sy
      * We've reached a leaf of the trie
      */
     darray_set_leaf(t->darray, i, 0);
-
+#if 0
     for(i=0;i<t->darray->ncells;i++) {
         if(t->darray->cells[i].base >= 0 || t->darray->cells[i].check >= 0) {
             printf("[%i]:%i %i;", i, t->darray->cells[i].base, t->darray->cells[i].check);
         }
     }
     printf("\n");
-
+#endif
     return BOO_OK;
 }
 
@@ -511,10 +522,12 @@ lookahead_add_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
                 }
             }
             else {
+#if 0
                 printf("Add first set of item:\n");
                 grammar_dump_item(grammar, item1);
 
                 printf("To items:\n");
+#endif
                 item2 = boo_list_begin(&item_set->items);
 
                 while(item2 != boo_list_end(&item_set->items)) {

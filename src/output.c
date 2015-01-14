@@ -59,7 +59,7 @@ boo_int_t output_base(boo_output_t *output, boo_grammar_t *grammar)
 
     for(i=0;i != grammar->num_item_sets;i++) {
         if(output->darray->cells[i + base].check == root) {
-            printf("%6d,", output->darray->cells[i + base].base);
+            printf("%6d,", output->darray->cells[i + base].base - DARRAY_POOL_BEGIN);
         }
         else {
             printf("%6d,", -1);
@@ -79,13 +79,15 @@ boo_int_t output_base(boo_output_t *output, boo_grammar_t *grammar)
 
 boo_int_t output_action(boo_output_t *output, boo_grammar_t *grammar)
 {
-    boo_uint_t i, root;
+    boo_uint_t i, n, root;
 
     root = darray_get_root(output->darray);
 
     printf("static const boo_uint8 boo_action[] = {\n");
 
-    for(i=0;i != output->max_cells;i++) {
+    n = 0;
+
+    for(i=DARRAY_POOL_BEGIN;i != output->max_cells;i++,n++) {
         if(output->darray->cells[i].check != root)
         {
             printf("%6d,", output->darray->cells[i].leaf);
@@ -94,7 +96,7 @@ boo_int_t output_action(boo_output_t *output, boo_grammar_t *grammar)
             printf("%6d,", 0);
         }
 
-        if(i % output->row_stride == output->row_stride - 1) {
+        if(n % output->row_stride == output->row_stride - 1) {
             printf("\n");
         }
     }
@@ -108,14 +110,16 @@ boo_int_t output_action(boo_output_t *output, boo_grammar_t *grammar)
 
 boo_int_t output_check(boo_output_t *output, boo_grammar_t *grammar)
 {
-    boo_uint_t i, root, base;
+    boo_uint_t i, n, root, base;
 
     root = darray_get_root(output->darray);
     base = darray_get_base(output->darray, root);
 
     printf("static const boo_uint8 boo_check[] = {\n");
 
-    for(i=0;i != output->max_cells;i++) {
+    n = 0;
+
+    for(i=DARRAY_POOL_BEGIN;i != output->max_cells;i++,n++) {
         if(output->darray->cells[i].check > 0 &&
             output->darray->cells[i].check != root)
         {
@@ -125,7 +129,7 @@ boo_int_t output_check(boo_output_t *output, boo_grammar_t *grammar)
             printf("%6d,", -1);
         }
 
-        if(i % output->row_stride == output->row_stride - 1) {
+        if(n % output->row_stride == output->row_stride - 1) {
             printf("\n");
         }
     }
@@ -143,8 +147,9 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
     boo_int_t rc;
     boo_trie_walker_t walker;
     boo_uint_t *p, *q;
-    boo_uint_t base, i;
+    boo_uint_t base, i, symbol;
     boo_trie_t *t;
+    boo_lhs_lookup_t *lhs_lookup;
 
     t = grammar->lookahead_set;
 
@@ -168,8 +173,24 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
 
     for(i=base;i != t->darray->ncells;i++) {
         if(t->darray->cells[i].check == walker.current) {
-            printf("Adding lookahead %d to state %d rule %d\n", i - base, state, item->rule_n);
-            rc = darray_insert(output->darray, state, i - base, -item->rule_n);
+            if(i - base != BOO_EOF) {
+                symbol = boo_code_to_symbol(i - base);
+                lhs_lookup = grammar->lhs_lookup + symbol;
+
+                if(lhs_lookup->literal) {
+                    symbol = lhs_lookup->name.data[0];
+                    printf("Adding lookahead '%c' to state %d rule %d\n", symbol, state, item->rule_n);
+                }
+                else {
+                    printf("Adding lookahead %d to state %d rule %d\n", symbol, state, item->rule_n);
+                }
+            }
+            else {
+                symbol = 0;
+                printf("Adding lookahead $eof to state %d rule %d\n", state, item->rule_n);
+            }
+
+            rc = darray_insert(output->darray, state, symbol, -item->rule_n);
 
             if(rc != BOO_OK) {
                 return rc;
@@ -183,10 +204,11 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
 boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
 {
     boo_int_t rc;
-    boo_uint_t i;
+    boo_uint_t i, symbol;
     boo_lalr1_item_set_t *item_set;
     boo_lalr1_item_t *item;
     boo_uint_t root;
+    boo_lhs_lookup_t *lhs_lookup;
 
     item_set = boo_list_begin(&grammar->item_sets);
 
@@ -197,15 +219,31 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
         while(item != boo_list_end(&item_set->items)) {
             if(item->transition != NULL)
             {
-                rc = darray_insert(output->darray, item_set->state_n,
-                    boo_token_get(item->rhs[item->pos]),
-                    item->transition->item_set->state_n);
+                if(boo_is_token(item->rhs[item->pos])) {
+                    symbol = boo_code_to_symbol(item->rhs[item->pos]);
+                    lhs_lookup = grammar->lhs_lookup + symbol;
 
-                if(rc != BOO_OK) {
-                    return rc;
+                    if(lhs_lookup->literal) {
+                        symbol = lhs_lookup->name.data[0];
+
+                        printf("Adding transition '%c' to state %d -> %d\n",
+                            symbol, item_set->state_n,
+                            item->transition->item_set->state_n);
+                    }
+                    else {
+                        printf("Adding transition %d to state %d -> %d\n",
+                            symbol, item_set->state_n,
+                            item->transition->item_set->state_n);
+                    }
+
+                    rc = darray_insert(output->darray, item_set->state_n,
+                        boo_token_get(item->rhs[item->pos]),
+                        item->transition->item_set->state_n);
+
+                    if(rc != BOO_OK) {
+                        return rc;
+                    }
                 }
-
-                break;
             }
             else if(item->pos == item->length) {
                 rc = output_add_lookahead(output, grammar, item_set->state_n, item);
@@ -213,8 +251,6 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
                 if(rc != BOO_OK) {
                     return rc;
                 }
-
-                break;
             }
             else {
                 rc = darray_insert(output->darray, item_set->state_n,
@@ -223,8 +259,6 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
                 if(rc != BOO_OK) {
                     return rc;
                 }
-
-                break;
             }
             
             item = boo_list_next(item);

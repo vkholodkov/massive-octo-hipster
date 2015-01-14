@@ -5,7 +5,6 @@
 
 static boo_int_t trie_add_branch(boo_trie_t *t, boo_int_t node, boo_uint_t *suffix, boo_uint_t *end, boo_uint_t data) {
     boo_int_t       new_node;
-    boo_uint_t      l;
 
     while(suffix != end) {
         new_node = darray_insert_branch(t->darray, &t->darray->symbols, node, *suffix);
@@ -21,6 +20,8 @@ static boo_int_t trie_add_branch(boo_trie_t *t, boo_int_t node, boo_uint_t *suff
 
     darray_set_base(t->darray, new_node, -1);
     darray_set_leaf(t->darray, new_node, data);
+#if 0
+    boo_uint_t      l;
 
     for(l=0;l<t->darray->ncells;l++) {
         if(t->darray->cells[l].base >= 0 || t->darray->cells[l].check >= 0) {
@@ -28,7 +29,7 @@ static boo_int_t trie_add_branch(boo_trie_t *t, boo_int_t node, boo_uint_t *suff
         }
     }
     printf("\n");
-
+#endif
     return BOO_OK;
 }
 

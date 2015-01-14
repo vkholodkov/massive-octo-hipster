@@ -24,6 +24,7 @@ struct boo_lalr1_item_set_s;
 typedef struct {
     boo_str_t               name;
     void                    *rules;
+    unsigned                literal:1;
 } boo_lhs_lookup_t;
 
 typedef struct boo_transition_s {
@@ -100,6 +101,11 @@ typedef struct boo_lalr1_item_set_s {
     unsigned                has_reductions:1;
 } boo_lalr1_item_set_t;
 
+/*
+ * A LALR(1) item.
+ * Consists of a left-hand-side, right-hand-side
+ * and a position in the right-hand-side
+ */
 typedef struct {
     boo_list_entry_t        entry;
 

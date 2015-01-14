@@ -23,6 +23,7 @@ bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t
 {
     symbol_t *symbol;
     boo_lhs_lookup_t *lookup;
+    boo_uint_t i, t;
 
     symbol = symtab_resolve(grammar->symtab, token);
 
@@ -42,7 +43,14 @@ bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t
         /*
          * Treat symbols in capitals as tokens
          */
-        if((token->data[0] >= 'A' && token->data[0] <= 'Z') || flags & BOO_LITERAL) {
+        t = 1;
+        for(i = 0 ; i != token->len ; i++) {
+            if(token->data[i] >= 'a' && token->data[i] <= 'z') {
+                t = 0;
+            }
+        }
+
+        if(t || (flags & BOO_LITERAL)) {
             symbol->value |= BOO_TOKEN;
         }
 
@@ -54,6 +62,7 @@ bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t
 
         lookup->rules = NULL;
         lookup->name = symbol->name;
+        lookup->literal = (flags & BOO_LITERAL) ? 1 : 0;
 
         grammar->num_symbols++;
     }
@@ -93,10 +102,12 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     boo_uint_t *rhs;
     boo_lhs_lookup_t *lookup;
     boo_uint_t flags;
+    boo_uint_t rule_no;
 
     state = s_lhs;
     has_lhs = 0;
     lhs = 0;
+    rule_no = 1;
 
     rhs_vector = vector_create(pool, sizeof(boo_uint_t), 8);
 
@@ -143,6 +154,8 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     if(symbol == NULL) {
                         goto cleanup;
                     }
+
+                    symbol->line = rule_no++;
 
                     lhs = symbol->value;
                     has_lhs = 1;
