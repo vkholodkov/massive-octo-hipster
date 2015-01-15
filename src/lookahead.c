@@ -388,10 +388,12 @@ lookahead_add_first_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set, 
     item = boo_list_begin(&item_set->items);
 
     while(item != boo_list_end(&item_set->items)) {
-        if(item->pos != item->length && boo_is_token(item->rhs[item->pos]))
+        if(item->pos != item->length && boo_is_token(item->rhs[item->pos]) && 
+            item->transition != NULL)
         {
             rc = lookahead_add_item(grammar, dest,
-                boo_token_get(item->rhs[item->pos]), item_set->state_n);
+                boo_token_get(item->rhs[item->pos]),
+                item->transition->item_set->state_n);
 
             if(rc != BOO_OK) {
                 return rc;
@@ -410,10 +412,13 @@ lookahead_find_first_set(boo_grammar_t *grammar, boo_lalr1_item_t *v, boo_lalr1_
     boo_int_t rc;
     boo_lalr1_item_set_t *item_set;
     boo_lalr1_item_t *item;
+    boo_uint_t matches_core_item;
 
     item_set = boo_list_begin(&grammar->item_sets);
 
     while(item_set != boo_list_end(&grammar->item_sets)) {
+
+        matches_core_item = 0;
 
         item = boo_list_begin(&item_set->items);
 
@@ -421,14 +426,18 @@ lookahead_find_first_set(boo_grammar_t *grammar, boo_lalr1_item_t *v, boo_lalr1_
             if(item->core && item->lhs == v->lhs && item->length == v->length && 
                 item->pos == v->pos && !memcmp(item->rhs, v->rhs, item->length * sizeof(boo_uint_t)))
             {
-                rc = lookahead_add_first_set(grammar, item_set, dest);
-
-                if(rc != BOO_OK) {
-                    return rc;
-                }
+                matches_core_item = 1;
             }
 
             item = boo_list_next(item);
+        }
+
+        if(matches_core_item) {
+            rc = lookahead_add_first_set(grammar, item_set, dest);
+
+            if(rc != BOO_OK) {
+                return rc;
+            }
         }
 
         item_set = boo_list_next(item_set);
@@ -523,6 +532,14 @@ lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sy
         return BOO_ERROR;
     }
 
+    if(n->leaf != -1 && n->leaf != state) {
+        fprintf(stdout, "Reduce-Reduce conflict:\n");
+        item->core = 0;
+        grammar_dump_item(grammar, item);
+        fprintf(stdout, "On %d %d vs %d\n", sym, n->leaf, state);
+        return BOO_ERROR;
+    }
+
     /*
      * We've reached a leaf of the trie
      */
@@ -549,6 +566,9 @@ lookahead_add_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
             if(boo_is_token(item1->rhs[item1->pos])) {
                 sym = boo_token_get(item1->rhs[item1->pos]);
 
+                /*
+                 * Lookup this item in the first set
+                 */
                 if(sym != BOO_EOF) {
                     rc = lookahead_lookup_state(grammar, item1, &state);
 
@@ -567,9 +587,11 @@ lookahead_add_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
                 /*
                  * Scan over items of the item set and add those
                  * that have the marker at the end to the dictionary
+                 * and those lhs matches the symbol in front of the marker
+                 * if the item above
                  */
                 while(item2 != boo_list_end(&item_set->items)) {
-                    if(item2->pos == item2->length) {
+                    if(item2->pos == item2->length && item1->rhs[item1->pos] == item2->lhs) {
                         rc = lookahead_add_item(grammar, item2, sym, state);
 
                         if(rc == BOO_ERROR) {
