@@ -123,6 +123,11 @@ typedef struct {
      */
     boo_uint_t              remove;
 
+    /*
+     * What is the symbol in front of the marker of the original rule this item is derived from
+     */
+    boo_uint_t              original_symbol;
+
     unsigned                closed:1;
     unsigned                core:1;
 } boo_lalr1_item_t;

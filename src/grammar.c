@@ -667,8 +667,9 @@ boo_int_t grammar_generate_lookahead_sets(boo_grammar_t *grammar)
 void grammar_dump_item(boo_grammar_t *grammar, boo_lalr1_item_t *item) {
     boo_int_t i;
 
-    printf(item->core ? "%s -> " : "+%s -> ",
-        grammar->lhs_lookup[boo_code_to_symbol(item->lhs)].name.data);
+    printf(item->core ? "" : "+");
+    boo_puts(stdout, &grammar->lhs_lookup[boo_code_to_symbol(item->lhs)].name);
+    printf(" -> ");
 
     for(i = 0 ; i != item->length ; i++) {
         if(item->pos == i) {
@@ -700,6 +701,11 @@ void grammar_dump_item(boo_grammar_t *grammar, boo_lalr1_item_t *item) {
 
     if(item->remove != 0) {
         printf(" remove %d", item->remove);
+    }
+
+    if(item->original_symbol != 0) {
+        printf(" original ");
+        boo_puts(stdout, &grammar->lhs_lookup[boo_code_to_symbol(item->original_symbol)].name);
     }
 
     printf("\n");

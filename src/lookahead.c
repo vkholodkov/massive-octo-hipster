@@ -80,6 +80,8 @@ lookahead_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
                             }
 
                             new_item->remove = item->remove + num_nonterminals;
+                            new_item->original_symbol = item->core ? item->rhs[item->pos - 1]
+                                : item->original_symbol;
 
                             /*
                              * Book this rule (booking is only valid for the current item set)
@@ -537,7 +539,7 @@ lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sy
         item->core = 0;
         grammar_dump_item(grammar, item);
         fprintf(stdout, "On %d %d vs %d\n", sym, n->leaf, state);
-        return BOO_ERROR;
+//        return BOO_ERROR;
     }
 
     /*
@@ -591,7 +593,7 @@ lookahead_add_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
                  * if the item above
                  */
                 while(item2 != boo_list_end(&item_set->items)) {
-                    if(item2->pos == item2->length && item1->rhs[item1->pos] == item2->lhs) {
+                    if(item2->pos == item2->length && item2->original_symbol == item1->rhs[item1->pos - 1]) {
                         rc = lookahead_add_item(grammar, item2, sym, state);
 
                         if(rc == BOO_ERROR) {
