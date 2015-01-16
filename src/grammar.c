@@ -363,7 +363,8 @@ grammar_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set,
     item = boo_list_begin(&item_set->items);
 
     while(item != boo_list_end(&item_set->items)) {
-        if(item->pos != item->length && boo_token_get(item->rhs[item->pos]) != BOO_EOF)
+        if(item->pos != item->length && boo_token_get(item->rhs[item->pos]) != BOO_EOF
+            && (item->pos + 1 == item->length || boo_token_get(item->rhs[item->pos + 1]) != BOO_EOF))
         {
             symbol = boo_token_get(item->rhs[item->pos]);
             lookup = grammar->transition_lookup + symbol;
