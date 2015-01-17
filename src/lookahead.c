@@ -537,7 +537,7 @@ lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sy
     if(n->leaf != -1 && n->leaf != state) {
         fprintf(stdout, "Reduce-Reduce conflict:\n");
         item->core = 0;
-        grammar_dump_item(grammar, item);
+        grammar_dump_item(stdout, grammar, item);
         fprintf(stdout, "On %d %d vs %d\n", sym, n->leaf, state);
 //        return BOO_ERROR;
     }
@@ -576,7 +576,7 @@ lookahead_add_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
 
                     if(rc != BOO_OK) {
                         fprintf(stdout, "Cannot resolve state of item ");
-                        grammar_dump_item(grammar, item1);
+                        grammar_dump_item(stdout, grammar, item1);
                         return BOO_ERROR;
                     }
                 }

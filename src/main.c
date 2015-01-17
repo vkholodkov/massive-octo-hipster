@@ -13,11 +13,42 @@
 boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *filename);
 
 boo_str_t target_filename = boo_string("a.out");
+boo_str_t source_suffix = boo_string(".boo");
+boo_str_t dest_suffix = boo_string(".h");
+boo_str_t debug_suffix = boo_string(".debug");
+
+static boo_int_t replace_suffix(pool_t *pool, boo_str_t *source_filename,
+    boo_str_t *dest_filename, boo_str_t *source_suffix, boo_str_t *dest_suffix)
+{
+    u_char *p;
+
+    dest_filename->len = source_filename->len - source_suffix->len + dest_suffix->len;
+
+    dest_filename->data = palloc(pool, dest_filename->len + 1);
+
+    if(dest_filename->data == NULL) {
+        return BOO_ERROR;
+    }
+
+    p = dest_filename->data;
+
+    memcpy(p, source_filename->data, source_filename->len - source_suffix->len);
+
+    p += source_filename->len - source_suffix->len;
+
+    memcpy(p, dest_suffix->data, dest_suffix->len);
+
+    p += dest_suffix->len;
+
+    *p = '\0';
+
+    return BOO_OK;
+}
 
 boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
     boo_int_t result, i;
     pool_t *p, *tmp_pool;
-    boo_str_t *_filenames;
+    boo_str_t *_filenames, *output_filenames, *debug_filenames;
     boo_grammar_t *grammar;
     boo_output_t *output;
 
@@ -34,9 +65,23 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
         goto cleanup;
     }
 
-    _filenames = palloc(tmp_pool, sizeof(boo_str_t*)*num_filenames);
+    _filenames = palloc(tmp_pool, sizeof(boo_str_t)*num_filenames);
 
     if(filenames == NULL) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    output_filenames = palloc(p, sizeof(boo_str_t)*num_filenames);
+
+    if(output_filenames == NULL) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    debug_filenames = palloc(tmp_pool, sizeof(boo_str_t)*num_filenames);
+
+    if(debug_filenames == NULL) {
         result = BOO_ERROR;
         goto cleanup;
     }
@@ -44,11 +89,32 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
     for(i = 0;i < num_filenames;i++) {
         _filenames[i].data = (u_char*)filenames[i];
         _filenames[i].len = strlen(filenames[i]);
+
+        result = replace_suffix(p, &_filenames[i], &output_filenames[i],
+            &source_suffix, &dest_suffix);
+
+        if(result != BOO_OK) {
+            goto cleanup;
+        }
+
+        result = replace_suffix(tmp_pool, &_filenames[i], &debug_filenames[i],
+            &source_suffix, &debug_suffix);
+
+        if(result != BOO_OK) {
+            goto cleanup;
+        }
     }
 
     grammar = grammar_create(p);
 
     if(grammar == NULL) {
+        result = BOO_ERROR;
+        goto cleanup1;
+    }
+
+    grammar->debug = fopen((const char*)debug_filenames[0].data, "w");
+
+    if(grammar->debug == NULL) {
         result = BOO_ERROR;
         goto cleanup1;
     }
@@ -76,8 +142,8 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
         goto cleanup;
     }
 
-    printf("LR item sets:\n");
-    grammar_dump_item_sets(grammar, &grammar->item_sets);
+    fprintf(grammar->debug, "LR item sets:\n");
+    grammar_dump_item_sets(grammar->debug, grammar, &grammar->item_sets);
 
     result = lookahead_generate_item_sets(grammar, &grammar->reverse_item_sets);
 
@@ -92,13 +158,22 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
         result = BOO_ERROR;
         goto cleanup;
     }
-#if 1
-    printf("Lookahead item sets:\n");
-    grammar_dump_item_sets(grammar, &grammar->reverse_item_sets);
-#endif
+
+    fprintf(grammar->debug, "Lookahead item sets:\n");
+    grammar_dump_item_sets(grammar->debug, grammar, &grammar->reverse_item_sets);
+
     output = output_create(p);
 
     if(output == NULL) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    output->debug = grammar->debug;
+
+    output->file = fopen((const char*)output_filenames[0].data, "w");
+
+    if(output->file == NULL) {
         result = BOO_ERROR;
         goto cleanup;
     }

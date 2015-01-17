@@ -21,7 +21,7 @@ AC_ARG_ENABLE(enable_debug,
 	[  --enable-debug         don't optimise and compile with debug information (default: no)])
 
 if test "$enable_debug" = "yes"; then
-	CFLAGS="$CFLAGS -Wall -Werror -O0 -g -DDEBUG"
+	CFLAGS="-Wall -Werror -O0 -g -DDEBUG"
 	LDFLAGS="$LDFLAGS -g"
 	BUILD_MODE="debug"
 else

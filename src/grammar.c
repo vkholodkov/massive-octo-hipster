@@ -5,7 +5,7 @@
 
 static const boo_str_t accept_symbol_name = boo_string("$accept");
 
-void grammar_dump_item_set(boo_grammar_t*, boo_lalr1_item_set_t*);
+void grammar_dump_item_set(FILE*, boo_grammar_t*, boo_lalr1_item_set_t*);
 
 /*
  * Create a grammar and initialize all internal lists and a symbol table
@@ -89,13 +89,13 @@ void grammar_add_rule(boo_grammar_t *grammar, boo_rule_t *rule)
 
     boo_list_append(&grammar->rules, &rule->entry);
 
-    printf("%d) %x -> ", rule->rule_n, rule->lhs);
+    fprintf(grammar->debug, "%d) %x -> ", rule->rule_n, rule->lhs);
 
     for(i = 0 ; i != rule->length ; i++) {
-        printf("%x ", rule->rhs[i]);
+        fprintf(grammar->debug, "%x ", rule->rhs[i]);
     }
 
-    printf("\n");
+    fprintf(grammar->debug, "\n");
 }
 
 /*
@@ -363,9 +363,16 @@ grammar_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set,
     item = boo_list_begin(&item_set->items);
 
     while(item != boo_list_end(&item_set->items)) {
-        if(item->pos != item->length && boo_token_get(item->rhs[item->pos]) != BOO_EOF
-            && (item->pos + 1 == item->length || boo_token_get(item->rhs[item->pos + 1]) != BOO_EOF))
+        if(item->pos != item->length && boo_token_get(item->rhs[item->pos]) != BOO_EOF)
         {
+#if 0
+            if(item->pos + 1 != item->length && boo_token_get(item->rhs[item->pos + 1]) == BOO_EOF)
+            {
+                printf("skipping item with $eof after marker\n");
+                item = boo_list_next(item);
+                continue;
+            }
+#endif
             symbol = boo_token_get(item->rhs[item->pos]);
             lookup = grammar->transition_lookup + symbol;
 
@@ -665,54 +672,54 @@ boo_int_t grammar_generate_lookahead_sets(boo_grammar_t *grammar)
     return BOO_OK;
 }
 
-void grammar_dump_item(boo_grammar_t *grammar, boo_lalr1_item_t *item) {
+void grammar_dump_item(FILE *out, boo_grammar_t *grammar, boo_lalr1_item_t *item) {
     boo_int_t i;
 
-    printf(item->core ? "" : "+");
-    boo_puts(stdout, &grammar->lhs_lookup[boo_code_to_symbol(item->lhs)].name);
-    printf(" -> ");
+    fprintf(out, item->core ? "" : "+");
+    boo_puts(out, &grammar->lhs_lookup[boo_code_to_symbol(item->lhs)].name);
+    fprintf(out, " -> ");
 
     for(i = 0 ; i != item->length ; i++) {
         if(item->pos == i) {
-            printf(". ");
+            fprintf(out, ". ");
         }
 
         if(boo_is_token(item->rhs[i])) {
             if(boo_token_get(item->rhs[i]) == BOO_EOF) {
-                printf("$eof ");
+                fprintf(out, "$eof ");
             }
             else {
-                boo_puts(stdout, &grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name);
-                fputc(' ', stdout);
+                boo_puts(out, &grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name);
+                fputc(' ', out);
             }
         }
         else {
-            boo_puts(stdout, &grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name);
-            fputc(' ', stdout);
+            boo_puts(out, &grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name);
+            fputc(' ', out);
         }
     }
 
     if(item->pos == i) {
-        printf(". ");
+        fprintf(out, ". ");
     }
 
     if(item->transition != NULL) {
-        printf(" -- goto %d", item->transition->item_set->state_n);
+        fprintf(out, " -- goto %d", item->transition->item_set->state_n);
     }
 
     if(item->remove != 0) {
-        printf(" remove %d", item->remove);
+        fprintf(out, " remove %d", item->remove);
     }
 
     if(item->original_symbol != 0) {
-        printf(" original ");
-        boo_puts(stdout, &grammar->lhs_lookup[boo_code_to_symbol(item->original_symbol)].name);
+        fprintf(out, " original ");
+        boo_puts(out, &grammar->lhs_lookup[boo_code_to_symbol(item->original_symbol)].name);
     }
 
-    printf("\n");
+    fprintf(out, "\n");
 }
 
-void grammar_dump_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
+void grammar_dump_item_set(FILE *out, boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
 {
     boo_lalr1_item_t *item;
 
@@ -720,13 +727,13 @@ void grammar_dump_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_se
 
     while(item != boo_list_end(&item_set->items)) {
 
-        grammar_dump_item(grammar, item);
+        grammar_dump_item(out, grammar, item);
 
         item = boo_list_next(item);
     }
 }
 
-void grammar_dump_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
+void grammar_dump_item_sets(FILE *out, boo_grammar_t *grammar, boo_list_t *item_sets)
 {
     boo_uint_t item_set_n = 0;
     boo_lalr1_item_set_t *item_set;
@@ -735,11 +742,11 @@ void grammar_dump_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
 
     while(item_set != boo_list_end(item_sets)) {
 
-        printf("Item set %d (state %d):\n", item_set_n, item_set->state_n);
+        fprintf(out, "Item set %d (state %d):\n", item_set_n, item_set->state_n);
 
-        grammar_dump_item_set(grammar, item_set);
+        grammar_dump_item_set(out, grammar, item_set);
 
-        printf("\n");
+        fprintf(out, "\n");
 
         item_set = boo_list_next(item_set);
         item_set_n++;

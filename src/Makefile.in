@@ -23,7 +23,7 @@ $(TARGET): $(TARGET_OBJS) $(TARGET_OBJS) $(OBJS)
 	gcc -M -MF$@ $(CFLAGS) $<
 
 clean:
-	rm -f core $(OBJS) $(TEST_OBJS) $(TEST_RUNNER_OBJS) $(MODULE) $(TEST) $(MODULE)
+	rm -f core $(OBJS) $(TARGET_OBJS) $(TEST_OBJS) $(TEST_RUNNER_OBJS) $(MODULE) $(TEST) $(MODULE)
 
 distclean: clean
 	rm -f $(DEPS) $(patsubst %.o,%.d,$(OBJS)) $(patsubst %.o,%.d,$(TEST_OBJS))
