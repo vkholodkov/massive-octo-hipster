@@ -3,8 +3,6 @@
 
 #include "grammar.h"
 
-void grammar_dump_item_set(boo_grammar_t*, boo_lalr1_item_set_t*);
-
 static boo_int_t
 lookahead_add_item(boo_grammar_t*, boo_lalr1_item_t*, boo_uint_t, boo_uint_t);
 
@@ -127,9 +125,9 @@ lookahead_close_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
             return rc;
         }
 
-#if 0
-        printf("Closed item set:\n");
-        grammar_dump_item_set(grammar, item_set);
+#if 1
+        fprintf(grammar->debug, "Closed item set:\n");
+        grammar_dump_item_set(grammar->debug, grammar, item_set);
 #endif
 
         item_set = boo_list_next(item_set);
@@ -151,7 +149,7 @@ lookahead_remove_duplicate_core_sets(boo_grammar_t *grammar, boo_list_t *item_se
         item_set2 = boo_list_begin(result_sets);
 
         while(item_set2 != boo_list_end(result_sets)) {
-            if(grammar_core_sets_match(item_set1, item_set2)) {
+            if(grammar_core_sets_match(grammar, item_set1, item_set2)) {
                 tmp = boo_list_next(item_set2);
 
 #if 0
@@ -235,7 +233,7 @@ lookahead_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_se
             new_item->pos = item->pos - 1;
             new_item->core = 1;
 
-            boo_list_append(&new_item_set->items, &new_item->entry);
+            grammar_item_set_add_item(new_item_set, new_item);
         }
 
         item = boo_list_next(item);

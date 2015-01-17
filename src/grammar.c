@@ -253,8 +253,8 @@ grammar_close_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
         }
 
 #if 0
-        printf("Closed item set:\n");
-        grammar_dump_item_set(grammar, item_set);
+        fprintf(grammar->debug, "\nClosed item set:\n--------------------------\n");
+        grammar_dump_item_set(grammar->debug, grammar, item_set);
 #endif
 
         item_set = boo_list_next(item_set);
@@ -263,31 +263,66 @@ grammar_close_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
     return BOO_OK;
 }
 
+void
+grammar_item_set_add_item(boo_lalr1_item_set_t *item_set, boo_lalr1_item_t *n)
+{
+    boo_lalr1_item_t *item;
+    int cmp, i;
+    
+    item = boo_list_begin(&item_set->items);
+
+    while(item != boo_list_end(&item_set->items)) {
+        if(n->lhs < item->lhs || (item->lhs == n->lhs && n->length < item->length)) {
+            break;
+        }
+
+        if(item->lhs == n->lhs && item->length == n->length) {
+            cmp = 0;
+
+            for(i = 0 ; i != item->length ; i++) {
+                if(n->rhs[i] != item->rhs[i]) {
+                    cmp = (boo_token_get(n->rhs[i]) < boo_token_get(item->rhs[i])) ? -1 : 1;
+                    break;
+                }
+            }
+
+            if(cmp < 0) {
+                break;
+            }
+
+            if(cmp == 0 && n->pos < item->pos) {
+                break;
+            }
+        } 
+
+        item = boo_list_next(item);
+    }
+
+    boo_list_insert(&item_set->items, &n->entry, &item->entry);
+}
+
 /*
  * Returns true if core sets match
  */
-boo_int_t grammar_core_sets_match(boo_lalr1_item_set_t *item_set1, boo_lalr1_item_set_t *item_set2)
+boo_int_t grammar_core_sets_match(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set1, boo_lalr1_item_set_t *item_set2)
 {
-    boo_lalr1_item_t *item1;
-    boo_lalr1_item_t *item2;
-    boo_uint_t num_core1 = 0;
-    boo_uint_t num_core2 = 0;
-
-    item1 = boo_list_begin(&item_set1->items);
+    boo_lalr1_item_t *item1 = boo_list_begin(&item_set1->items);
+    boo_lalr1_item_t *item2 = boo_list_begin(&item_set2->items);
 
     while(item1 != boo_list_end(&item_set1->items)) {
-
         if(item1->core) {
-            num_core1++;
-        }
+            while(!item2->core && item2 != boo_list_end(&item_set2->items)) {
+                item2 = boo_list_next(item2);
+            }
 
-        item2 = boo_list_begin(&item_set2->items);
+            if(item2 == boo_list_end(&item_set2->items)) {
+                return 0;
+            }
 
-        while(item2 != boo_list_end(&item_set2->items)) {
-            if(item1->core && item2->core && item1->lhs == item2->lhs && item1->length == item2->length && 
-                item1->pos == item2->pos && !memcmp(item1->rhs, item2->rhs, item1->length * sizeof(boo_uint_t)))
+            if(item1->lhs != item2->lhs || item1->length != item2->length || 
+                item1->pos != item2->pos || memcmp(item1->rhs, item2->rhs, item1->length * sizeof(boo_uint_t)))
             {
-                num_core2++;
+                return 0;
             }
 
             item2 = boo_list_next(item2);
@@ -296,7 +331,18 @@ boo_int_t grammar_core_sets_match(boo_lalr1_item_set_t *item_set1, boo_lalr1_ite
         item1 = boo_list_next(item1);
     }
 
-    return (num_core1 == num_core2);
+    if(item2 != boo_list_end(&item_set2->items)) {
+        return 0;
+    }
+#if 0
+    fprintf(grammar->debug, "\nCore sets:\n--------------------------\n");
+    grammar_dump_item_set(grammar->debug, grammar, item_set1);
+    fprintf(grammar->debug, "-------- AND ----------\n");
+    grammar_dump_item_set(grammar->debug, grammar, item_set2);
+    fprintf(grammar->debug, "-------- MATCH ----------\n");
+#endif
+
+    return 1;
 }
 
 static boo_int_t
@@ -312,12 +358,12 @@ grammar_remove_duplicate_core_sets(boo_grammar_t *grammar, boo_list_t *item_sets
         item_set2 = boo_list_begin(result_sets);
 
         while(item_set2 != boo_list_end(result_sets)) {
-            if(grammar_core_sets_match(item_set1, item_set2)) {
+            if(grammar_core_sets_match(grammar, item_set1, item_set2)) {
                 tmp = boo_list_next(item_set2);
 
 #if 0
-                printf("Removing duplicate core set:\n");
-                grammar_dump_item_set(grammar, item_set2);
+                fprintf(grammar->debug, "Removing duplicate core set:\n");
+                grammar_dump_item_set(grammar->debug, grammar, item_set2);
 #endif
 
                 boo_list_remove(&item_set2->entry);
@@ -392,7 +438,7 @@ grammar_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set,
                 grammar->first_used_trans = lookup;
 
                 /*
-                 * Allocated and link a new transition
+                 * Allocate and link a new transition
                  */
                 t = pcalloc(grammar->pool, sizeof(boo_transition_t));
 
@@ -420,7 +466,7 @@ grammar_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set,
             new_item->pos = item->pos + 1;
             new_item->core = 1;
 
-            boo_list_append(&new_item_set->items, &new_item->entry);
+            grammar_item_set_add_item(new_item_set, new_item);
 
             if(new_item->pos == new_item->length) {
                 new_item_set->has_reductions = 1;
@@ -751,4 +797,6 @@ void grammar_dump_item_sets(FILE *out, boo_grammar_t *grammar, boo_list_t *item_
         item_set = boo_list_next(item_set);
         item_set_n++;
     }
+
+    fflush(out);
 }
