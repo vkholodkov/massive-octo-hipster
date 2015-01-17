@@ -7,7 +7,7 @@
 #include "pool.h"
 #include "list.h"
 #include "symtab.h"
-#include "tree.h"
+#include "trie.h"
 
 #define         BOO_TOKEN               0x80000000
 #define         BOO_EOF                 0
