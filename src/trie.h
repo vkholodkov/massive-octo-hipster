@@ -24,9 +24,7 @@ typedef struct {
      * Linked lists of transitions from and to this state
      */
     struct boo_trie_transition       *to;
-
-//    boo_trie_leaf_t                  *leaf;
-    boo_int_t                       leaf;
+    void                             *leaf;
 } boo_trie_node_t;
 
 typedef struct boo_trie_transition {

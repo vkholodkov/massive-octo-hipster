@@ -80,6 +80,7 @@ lookahead_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
                             new_item->remove = item->remove + num_nonterminals;
                             new_item->original_symbol = item->core ? item->rhs[item->pos - 1]
                                 : item->original_symbol;
+                            new_item->instantiated_from = item;
 
                             /*
                              * Book this rule (booking is only valid for the current item set)
@@ -125,7 +126,7 @@ lookahead_close_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
             return rc;
         }
 
-#if 1
+#if 0
         fprintf(grammar->debug, "Closed item set:\n");
         grammar_dump_item_set(grammar->debug, grammar, item_set);
 #endif
@@ -451,7 +452,7 @@ lookahead_lookup_state(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_
 {
     boo_trie_t *t = grammar->core_set_index;
     boo_trie_node_t *n;
-    boo_uint_t *p, *q, symbol;
+    boo_uint_t *p, *q, symbol, *pstate;
 
     if(state == NULL) {
         return BOO_DECLINED;
@@ -484,7 +485,9 @@ lookahead_lookup_state(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_
         return BOO_DECLINED;
     }
 
-    *state = n->leaf;
+    pstate = n->leaf;
+
+    *state = *pstate;
 
     return BOO_OK;
 }
@@ -494,7 +497,10 @@ lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sy
 {
     boo_trie_t *t = grammar->lookahead_set;
     boo_trie_node_t *n;
-    boo_uint_t *p, *q, symbol;
+    boo_uint_t *p, *q, symbol, *actions, num_actions;
+    boo_lalr1_item_t *i;
+    boo_reduction_t *reduction;
+    boo_uint_t conflict;
 
     /*
      * Add an element corresponding to the left-hand-side
@@ -532,18 +538,70 @@ lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sy
         return BOO_ERROR;
     }
 
-    if(n->leaf != -1 && n->leaf != state) {
-        fprintf(stdout, "Reduce-Reduce conflict:\n");
-        item->core = 0;
-        grammar_dump_item(stdout, grammar, item);
-        fprintf(stdout, "On %d %d vs %d\n", sym, n->leaf, state);
-//        return BOO_ERROR;
+    i = item;
+
+    num_actions = 0;
+
+    while(i != NULL && !i->core) {
+        num_actions++;
+        i = i->instantiated_from;
     }
 
     /*
      * We've reached a leaf of the trie
      */
-    n->leaf = state;
+    if(n->leaf != NULL) {
+        reduction = n->leaf;
+
+        conflict = 0;
+
+        if(reduction->num_actions == num_actions) {
+            i = item; actions = reduction->actions;
+
+            while(i != NULL && !i->core) {
+                if(*actions != i->rule_n) {
+                    conflict = 1;
+                    break;
+                }
+                i = i->instantiated_from; actions++;
+            }
+        }
+        else {
+            conflict = 1;
+        }
+
+        if(conflict) {
+            fprintf(stdout, "Reduce-Reduce conflict:\n");
+            grammar_dump_item(stdout, grammar, item);
+            fprintf(stdout, "On %d %d vs %d\n", sym, reduction->actions[0], item->rule_n);
+//            return BOO_ERROR;
+        }
+        return BOO_OK;
+    }
+
+    reduction = pcalloc(grammar->pool, sizeof(boo_reduction_t));
+
+    reduction->num_actions = num_actions;
+
+    reduction->actions = actions = pcalloc(grammar->pool, reduction->num_actions * sizeof(boo_uint_t));
+
+    if(actions == NULL) {
+        return BOO_ERROR;
+    }
+
+    /*
+     * Build reduction list
+     */
+    i = item;
+
+    while(i != NULL && !i->core) {
+        *actions++ = i->rule_n;
+        i = i->instantiated_from;
+    }
+
+    n->leaf = reduction;
+
+    boo_list_append(&grammar->reductions, &reduction->entry);
 
     return BOO_OK;
 }
@@ -553,7 +611,7 @@ lookahead_add_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
 {
     boo_int_t rc;
     boo_lalr1_item_t *item1, *item2;
-    boo_uint_t sym;
+    boo_uint_t symbol;
     boo_uint_t state;
 
     item1 = boo_list_begin(&item_set->items);
@@ -564,12 +622,12 @@ lookahead_add_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
              * Check if the symbol next to the current position is a token
              */
             if(boo_is_token(item1->rhs[item1->pos])) {
-                sym = boo_token_get(item1->rhs[item1->pos]);
+                symbol = boo_token_get(item1->rhs[item1->pos]);
 
                 /*
                  * Lookup this item in the first set
                  */
-                if(sym != BOO_EOF) {
+                if(symbol != BOO_EOF) {
                     rc = lookahead_lookup_state(grammar, item1, &state);
 
                     if(rc != BOO_OK) {
@@ -587,12 +645,12 @@ lookahead_add_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
                 /*
                  * Scan over items of the item set and add those
                  * that have the marker at the end to the dictionary
-                 * and those lhs matches the symbol in front of the marker
-                 * if the item above
+                 * and those left-hand-side matches the symbol in the front of the marker
+                 * of the item above
                  */
                 while(item2 != boo_list_end(&item_set->items)) {
                     if(item2->pos == item2->length && item2->original_symbol == item1->rhs[item1->pos - 1]) {
-                        rc = lookahead_add_item(grammar, item2, sym, state);
+                        rc = lookahead_add_item(grammar, item2, symbol, state);
 
                         if(rc == BOO_ERROR) {
                             return rc;

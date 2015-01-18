@@ -26,6 +26,7 @@ boo_grammar_t *grammar_create(pool_t *p)
     boo_list_init(&grammar->actions);
     boo_list_init(&grammar->item_sets);
     boo_list_init(&grammar->reverse_item_sets);
+    boo_list_init(&grammar->reductions);
 
     grammar->symtab = symtab_create(p);
 
@@ -539,7 +540,7 @@ grammar_renumber_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
  * Add an item to core set index
  */
 static boo_int_t
-grammar_add_item_to_core_set_index(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t state_n)
+grammar_add_item_to_core_set_index(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t *state_n)
 {
     boo_trie_node_t *n;
     boo_trie_t *t = grammar->core_set_index;
@@ -606,7 +607,7 @@ grammar_add_to_core_set_index(boo_grammar_t *grammar, boo_list_t *item_sets)
         while(item != boo_list_end(&item_set->items)) {
 
             if(item->core) {
-                rc = grammar_add_item_to_core_set_index(grammar, item, item_set->state_n);
+                rc = grammar_add_item_to_core_set_index(grammar, item, &item_set->state_n);
 
                 if(rc != BOO_OK) {
                     return rc;

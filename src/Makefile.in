@@ -7,12 +7,20 @@ LDFLAGS=@LDFLAGS@
 LIBS=@LIBS@
 TEST_OBJS=
 TEST=
-OBJS=pool.o symtab.o string.o list.o bootstrap.o vector.o grammar.o darray.o output.o lookahead.o trie.o
+OBJS=pool.o symtab.o string.o list.o bootstrap.o vector.o grammar.o darray.o output.o lookahead.o trie.o lookup.o
 TARGET_OBJS=main.o
 TARGET=booc
+TEST_OBJS=test.o
+TEST=test
 DEPS=.deps
 
-$(TARGET): $(TARGET_OBJS) $(TARGET_OBJS) $(OBJS)
+all: $(TARGET) $(TEST)
+
+$(TARGET): $(TARGET_OBJS) $(OBJS)
+	@echo "Linking $@"
+	$(CC) $^ -o $@ $(CDFLAGS) $(LDFLAGS) $(LIBS)
+
+$(TEST): $(TEST_OBJS)
 	@echo "Linking $@"
 	$(CC) $^ -o $@ $(CDFLAGS) $(LDFLAGS) $(LIBS)
 

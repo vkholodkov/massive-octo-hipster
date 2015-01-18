@@ -185,21 +185,49 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
         goto cleanup;
     }
 
-    result = output_base(output, grammar);
+    result = output_codes(output, grammar);
 
     if(result != BOO_OK) {
         result = BOO_ERROR;
         goto cleanup;
     }
 
-    result = output_action(output, grammar);
+    result = output_symbols(output, grammar);
 
     if(result != BOO_OK) {
         result = BOO_ERROR;
         goto cleanup;
     }
 
-    result = output_check(output, grammar);
+    result = output_lookup(output, grammar);
+
+    if(result != BOO_OK) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    result = output_actions(output, grammar);
+
+    if(result != BOO_OK) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    result = output_lhs(output, grammar);
+
+    if(result != BOO_OK) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    result = output_rhs(output, grammar);
+
+    if(result != BOO_OK) {
+        result = BOO_ERROR;
+        goto cleanup;
+    }
+
+    result = output_rules(output, grammar);
 
     if(result != BOO_OK) {
         result = BOO_ERROR;

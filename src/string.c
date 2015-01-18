@@ -36,3 +36,34 @@ void boo_puts(FILE *out, boo_str_t *s) {
         p++;
     }
 }
+
+void boo_escape_puts(FILE *out, boo_str_t *s)
+{
+    u_char *p, *q;
+
+    p = s->data;
+    q = p + s->len;
+
+    while(p != q) {
+        switch(*p) {
+            case '\a': fputc('\\', out); fputc('a', out); break;
+            case '\b': fputc('\\', out); fputc('b', out); break;
+            case '\f': fputc('\\', out); fputc('f', out); break;
+            case '\n': fputc('\\', out); fputc('n', out); break;
+            case '\r': fputc('\\', out); fputc('r', out); break;
+            case '\t': fputc('\\', out); fputc('t', out); break;
+            case '\v': fputc('\\', out); fputc('v', out); break;
+            case '\\': fputc('\\', out); fputc('\\', out); break;
+            case '\"': fputc('\\', out); fputc('"', out); break;
+            default:
+                if(*p < ' ') {
+                    fprintf(out, "\\%x", *p);
+                }
+                else {
+                    fputc(*p, out);
+                }
+                break; 
+        }
+        p++;
+    }
+}

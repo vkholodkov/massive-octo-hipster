@@ -3,8 +3,6 @@
 
 #include "output.h"
 
-#define boo_trans_len (2 * sizeof(boo_int_t))
-
 boo_output_t *output_create(pool_t *pool)
 {
     boo_output_t *output;
@@ -21,377 +19,38 @@ boo_output_t *output_create(pool_t *pool)
     return output;
 }
 
-static boo_gap_t *output_alloc_gap(boo_output_t *output) {
-    boo_gap_t *g;
-
-    if(output->free_gaps != NULL) {
-        g = output->free_gaps;
-        output->free_gaps = g->next;
-        g->next = NULL;
-        return g;
-    }
-
-    g = pcalloc(output->pool, sizeof(boo_output_t));
-
-    if(g == NULL) {
-        return NULL;
-    }
-
-    return g;
-}
-
-static void output_free_gap(boo_output_t *output, boo_gap_t *g) {
-    g->from = g->to = 0;
-    g->next = output->free_gaps;
-    output->free_gaps = g;
-}
-
-static void output_add_gap(boo_output_t *output, boo_gap_t *g)
-{
-    boo_gap_t *after, *before;
-
-    if(output->gaps != NULL) {
-        after = NULL;
-        before = output->gaps;
-
-        while(before != NULL) {
-            if(before->from >= g->to) {
-                break;
-            }
-            after = before;
-            before = before->next;
-        }
-
-        if(after == NULL) {
-            g->next = before;
-            output->gaps = g;
-        }
-        else {
-            g->next = before;
-            after->next = g;
-        }
-    }
-    else {
-        g->next = NULL;
-        output->gaps = g;
-    }
-
-    fprintf(output->debug, "add gap <%u, %u>\n", g->from, g->to);
-}
-
-static boo_int_t
-output_fill_gap(boo_output_t *output, boo_uint_t from, boo_uint_t to) {
-    boo_gap_t *p, *next, *prev;
-    boo_uint_t p_from, p_to;
-    boo_gap_t *new_gaps = NULL, *new_gap;
-
-    fprintf(output->debug, "fill_gap <%u, %u>\n", from, to);
-
-    p = output->gaps;
-    prev = NULL;
-
-    while(p != NULL) {
-        next = p->next;
-
-        if((p->from < to) && (p->to > from)) {
-            p_from = p->from >= from ? p->from : from;
-            p_to = p->to <= to ? p->to : to;
-
-            if(p->from == p_from && p->to == p_to) {
-                p->from = p->to;
-            }
-            else if(p->from == from) {
-                p->from = p_to;
-            }
-            else if(p->to == to) {
-                p->to = p_from;
-            }
-            else {
-                new_gap = output_alloc_gap(output);
-
-                if(new_gap == NULL) {
-                    return BOO_ERROR;
-                }
-
-                new_gap->from = p_to;
-                new_gap->to = p->to;
-                new_gap->next = new_gaps;
-                new_gaps = new_gap;
-
-                p->to = p_from;
-            }
-
-            if(p->from == p->to) {
-                if(p == output->gaps) {
-                    output->gaps = next;
-                }
-                else {
-                    prev->next = p->next;
-                }
-                output_free_gap(output, p);
-            }
-        }
-
-        prev = p;
-
-        p = next;
-    }
-
-    p = new_gaps;
-
-    while(p != NULL) {
-        next = p->next;
-        output_add_gap(output, p);
-        p = next;
-    }
-
-    return BOO_OK;
-}
-
-static boo_int_t
-output_add_transition(boo_output_t *output, boo_uint_t state, boo_uint_t symbol, boo_int_t target)
-{
-    boo_output_transition_t *nt, *before, *after;
-
-    nt = pcalloc(output->pool, sizeof(boo_output_transition_t));
-
-    if(nt == NULL) {
-        return BOO_ERROR;
-    }
-
-    nt->input = symbol;
-    nt->target = target;
-
-    if(output->states[state].transitions != NULL) {
-        after = NULL;
-        before = output->states[state].transitions;
-
-        while(before != NULL) {
-            if(before->input > nt->input) {
-                break;
-            }
-            after = before;
-            before = before->next;
-        }
-
-        if(after == NULL) {
-            nt->next = before;
-            output->states[state].transitions = nt;
-        }
-        else {
-            nt->next = before;
-            after->next = nt;
-        }
-    }
-    else {
-        nt->next = NULL;
-        output->states[state].transitions = nt;
-    }
-
-    return BOO_OK;
-}
-
-/*
- * Returns BOO_OK if it is possible to fit specified transition table at specified base,
- * Returns BOO_DECLINED otherwise
- */
-static boo_int_t
-output_can_store_transitions(boo_output_t *output, boo_int_t base, boo_output_state_t *n)
-{
-    boo_output_transition_t *t;
-    boo_uint_t from, to;
-    boo_gap_t *g;
-
-    t = n->transitions;
-    g = output->gaps;
-
-    while(t != NULL) {
-        from = base + t->input;
-
-        if(from >= output->end) {
-            return BOO_OK;
-        }
-
-        to = from + 1;
-
-        if(g == NULL) {
-            fprintf(stderr, "fatal error: no more gaps, but there are more symbols\n");
-            return BOO_DECLINED;
-        }
-
-        if((g->from < to) && (g->to > from)) {
-            t = t->next;
-
-            if(g->to == to) {
-                g = g->next;
-            }
-        }
-        else {
-            if(g->from < from) {
-                if(g->to >= from) {
-                    return BOO_DECLINED;
-                }
-                g = g->next;
-            }
-            else {
-                return BOO_DECLINED;
-            }
-        }
-    }
-
-    return BOO_OK;
-}
-
-static boo_int_t
-output_book_space(boo_output_t *output, boo_int_t base, boo_output_state_t *n) {
-    boo_output_transition_t *t;
-    boo_uint_t pos;
-    boo_gap_t *new_gap;
-    boo_int_t rc;
-
-    for(t = n->transitions ; t != NULL ; t = t->next) {
-        pos = base + t->input;
-
-        if(pos >= output->end) {
-            if(pos != output->end) {
-                new_gap = output_alloc_gap(output);
-
-                if(new_gap == NULL) {
-                    return BOO_ERROR;
-                }
-
-                new_gap->from = output->end;
-                new_gap->to = pos;
-                new_gap->next = NULL;
-
-                output_add_gap(output, new_gap);
-            }
-
-            output->end = pos + 1;
-
-            fprintf(output->debug, "extending space to %i, end is now %i\n", pos, output->end);
-        }
-
-        fprintf(output->debug, "placing symbol %u of state %d pointing to %d, pos %d\n", t->input, n - output->states, t->target, pos);
-
-        rc = output_fill_gap(output, pos, pos + 1);
-
-        if(rc != BOO_OK) {
-            return rc;
-        }
-    }
-
-    return BOO_OK;
-}
-
-static boo_int_t
-output_index_states(boo_output_t *output) {
-    boo_output_state_t *p, *q;
-    boo_output_transition_t *t;
-    boo_int_t base, offset;
-    boo_int_t rc;
-    boo_int_t *pi;
-
-    p = output->states;
-    q = p + output->num_states;
-
-    while(p != q) {
-        if(p->transitions == NULL) {
-            p++;
-            continue;
-        }
-
-        base = (output->gaps != NULL ? output->gaps->from : output->end)
-            - p->transitions->input;
-        
-        for(offset = base ; offset != (boo_int_t)output->end ; offset += 1) {
-            rc = output_can_store_transitions(output, offset, p);
-
-            if(rc == BOO_ERROR) {
-                return rc;
-            }
-
-            if(rc == BOO_OK) {
-                break;
-            }
-        }
-
-        p->base = offset;
-
-        rc = output_book_space(output, offset, p);
-
-        if(rc == BOO_ERROR) {
-            return rc;
-        }
-
-        p++;
-    }
-
-    output->next = pcalloc(output->pool, output->end * boo_trans_len);
-
-    if(output->next == NULL) {
-        return BOO_ERROR;
-    }
-
-    p = output->states;
-
-    while(p != q) {
-        if(p->transitions == NULL) {
-            p++;
-            continue;
-        }
-
-        for(t = p->transitions ; t != NULL ; t = t->next) {
-            pi = (boo_int_t*)&output->next[p->base * boo_trans_len + t->input * boo_trans_len];
-
-            *pi = p - output->states; // State number
-
-            pi++;
-
-            *pi = t->target;
-        }
-
-        p++;
-    }
-
-    return BOO_OK;
-}
-
-#if 0
-boo_int_t output_write_translate(output_t *output, grammar_t *grammar)
-{
-    output_printf(output, "static const boo_uint8 boo_translate[] = {\n");
-
-    for(i = 0 ; i != UCHAR_MAX ; i++) {
-        symbol = symtab_resolve(grammar->symtab, token);
-
-        if(symbol != NULL) {
-            output_printf(output, "%6d", boo_token_get(symbol->value));
-        }
-        else {
-            output_printf(output, "       0");
-        }
-
-        if(i != UCHAR_MAX - 1) {
-            output_printf(output, ",");
-        }
-    }
-
-    output_printf(output, "};\n");
-}
-#endif
-
-boo_int_t output_base(boo_output_t *output, boo_grammar_t *grammar)
+boo_int_t output_codes(boo_output_t *output, boo_grammar_t *grammar)
 {
     boo_uint_t i;
 
-    fprintf(output->file, "static const short boo_base[] = {\n");
+    fprintf(output->file, "#define BOO_EOF %d\n", UCHAR_MAX + 1);
 
-    for(i = 0 ; i != output->num_states ; i++) {
-        fprintf(output->file, "%6d,", output->states[i].base);
+    for(i = 0 ; i != grammar->num_symbols ; i++) {
+        if(grammar->lhs_lookup[i].token && !grammar->lhs_lookup[i].literal) {
+            fprintf(output->file, "#define BOO_");
+            boo_puts(output->file, &grammar->lhs_lookup[i].name);
+            fprintf(output->file, " %d\n", grammar->lhs_lookup[i].code);
+        }
+    }
+
+    fprintf(output->file, "\n");
+
+    return BOO_OK;
+}
+
+boo_int_t output_symbols(boo_output_t *output, boo_grammar_t *grammar)
+{
+    boo_uint_t i;
+
+    fprintf(output->file, "static const char *boo_symbol[] = {\n      ");
+
+    for(i = 0 ; i != grammar->num_symbols ; i++) {
+        fprintf(output->file, "\"");
+        boo_escape_puts(output->file, &grammar->lhs_lookup[i].name);
+        fprintf(output->file, "\", ");
 
         if(i % output->row_stride == output->row_stride - 1) {
-            fprintf(output->file, "\n");
+            fprintf(output->file, "\n      ");
         }
     }
 
@@ -402,22 +61,72 @@ boo_int_t output_base(boo_output_t *output, boo_grammar_t *grammar)
     return BOO_OK;
 }
 
-boo_int_t output_action(boo_output_t *output, boo_grammar_t *grammar)
+boo_int_t output_lookup(boo_output_t *output, boo_grammar_t *grammar)
 {
-    boo_int_t i, *pi;
-    boo_uint_t n = 0;
+    boo_int_t rc = lookup_write(output->file, output->term, "boo_t");
 
-    fprintf(output->file, "static const char boo_next[] = {\n");
+    if(rc != BOO_OK) {
+        return rc;
+    }
 
-    pi = (boo_int_t*)output->next;
+    return lookup_write(output->file, output->nterm, "boo_nt");
+}
 
-    for(i = 0 ; i != output->end ; i++) {
-        fprintf(output->file, "%6d,", pi[1]);
+boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar)
+{
+    boo_uint_t i, n = 0;
+    boo_reduction_t *reduction;
+
+    fprintf(output->file, "static const boo_uint_t boo_action[] = {\n");
+
+    reduction = boo_list_begin(&grammar->reductions);
+
+    while(reduction != boo_list_end(&grammar->reductions)) {
+        fprintf(output->file, "%6d,", reduction->num_actions);
 
         if(n % output->row_stride == output->row_stride - 1) {
             fprintf(output->file, "\n");
         }
-        n++; pi += 2;
+
+        n++;
+
+        for(i = 0 ; i != reduction->num_actions ; i++) {
+            fprintf(output->file, "%6d,", reduction->actions[i]);
+
+            if(n % output->row_stride == output->row_stride - 1) {
+                fprintf(output->file, "\n");
+            }
+
+            n++;
+        }
+
+        reduction = boo_list_next(reduction);
+    }
+
+    fprintf(output->file, "\n};\n\n");
+
+    return BOO_OK;
+}
+
+boo_int_t output_lhs(boo_output_t *output, boo_grammar_t *grammar)
+{
+    boo_uint_t n = 0;
+    boo_rule_t *rule;
+
+    fprintf(output->file, "static const boo_uint_t boo_lhs[] = {\n");
+
+    rule = boo_list_begin(&grammar->rules);
+
+    while(rule != boo_list_end(&grammar->rules)) {
+        fprintf(output->file, "%6d,", boo_code_to_symbol(rule->lhs));
+
+        if(n % output->row_stride == output->row_stride - 1) {
+            fprintf(output->file, "\n");
+        }
+
+        n++;
+
+        rule = boo_list_next(rule);
     }
 
     fprintf(output->file, "\n");
@@ -427,29 +136,87 @@ boo_int_t output_action(boo_output_t *output, boo_grammar_t *grammar)
     return BOO_OK;
 }
 
-boo_int_t output_check(boo_output_t *output, boo_grammar_t *grammar)
+boo_int_t output_rhs(boo_output_t *output, boo_grammar_t *grammar)
 {
-    boo_int_t i, *pi;
-    boo_uint_t n = 0;
+    boo_uint_t i, n = 0;
+    boo_rule_t *rule;
 
-    fprintf(output->file, "static const char boo_check[] = {\n");
+    fprintf(output->file, "static const boo_uint_t boo_rhs[] = {\n");
 
-    pi = (boo_int_t*)output->next;
+    rule = boo_list_begin(&grammar->rules);
 
-    for(i = 0 ; i != output->end ; i++) {
-        fprintf(output->file, "%6d,", pi[0]);
+    while(rule != boo_list_end(&grammar->rules)) {
+        for(i = 0 ; i != rule->length ; i++) {
+            fprintf(output->file, "%6d,", boo_code_to_symbol(rule->rhs[i]));
 
-        if(n % output->row_stride == output->row_stride - 1) {
-            fprintf(output->file, "\n");
+            if(n % output->row_stride == output->row_stride - 1) {
+                fprintf(output->file, "\n");
+            }
+
+            n++;
         }
-        n++; pi += 2;
+
+        rule = boo_list_next(rule);
     }
 
     fprintf(output->file, "\n");
 
-    fprintf(output->file, "};\n");
+    fprintf(output->file, "};\n\n");
 
     return BOO_OK;
+}
+
+boo_int_t output_rules(boo_output_t *output, boo_grammar_t *grammar)
+{
+    boo_uint_t n = 0, pos = 0;
+    boo_rule_t *rule;
+
+    fprintf(output->file, "static const boo_uint_t boo_rule[] = {\n");
+
+    rule = boo_list_begin(&grammar->rules);
+
+    while(rule != boo_list_end(&grammar->rules)) {
+        fprintf(output->file, "%6d,", rule->length);
+
+        if(n % output->row_stride == output->row_stride - 1) {
+            fprintf(output->file, "\n");
+        }
+
+        n++;
+
+        fprintf(output->file, "%6d,", pos);
+
+        if(n % output->row_stride == output->row_stride - 1) {
+            fprintf(output->file, "\n");
+        }
+
+        n++;
+
+        pos += rule->length;
+
+        rule = boo_list_next(rule);
+    }
+
+    fprintf(output->file, "\n");
+
+    fprintf(output->file, "};\n\n");
+
+    return BOO_OK;
+}
+
+static void
+output_renumber_reduction(boo_grammar_t *grammar)
+{
+    boo_reduction_t *reduction;
+    boo_uint_t pos = 0;
+
+    reduction = boo_list_begin(&grammar->reductions);
+
+    while(reduction != boo_list_end(&grammar->reductions)) {
+        reduction->pos = pos;
+        pos += (1 /* number of reductions */ + reduction->num_actions);
+        reduction = boo_list_next(reduction);
+    }
 }
 
 static boo_int_t
@@ -458,9 +225,10 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
     boo_int_t rc;
     boo_trie_t *t;
     boo_trie_node_t *n;
-    boo_uint_t *p, *q, symbol, next;
+    boo_uint_t *p, *q, symbol;
     boo_lhs_lookup_t *lhs_lookup;
     boo_trie_transition_t *tr;
+    boo_reduction_t *reduction;
 
     t = grammar->lookahead_set;
 
@@ -488,28 +256,36 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
     tr = n->to;
 
     while(tr != NULL) {
-        if(tr->input != BOO_EOF) {
-            symbol = boo_code_to_symbol(tr->input);
-            lhs_lookup = grammar->lhs_lookup + symbol;
-            next = tr->to->leaf;
+        if(tr->to->leaf != NULL) {
+            reduction = tr->to->leaf;
 
-            if(lhs_lookup->literal) {
-                symbol = lhs_lookup->name.data[0];
-                fprintf(output->debug, "adding lookahead '%c' to state %d -> %d\n", symbol, state, next);
+            if(tr->input != BOO_EOF) {
+                symbol = boo_code_to_symbol(tr->input);
+                lhs_lookup = grammar->lhs_lookup + symbol;
+
+                if(lhs_lookup->literal) {
+                    symbol = lhs_lookup->name.data[0];
+                    fprintf(output->debug, "adding lookahead '%c' to state %d reduce %d\n",
+                        symbol, state, reduction->actions[reduction->num_actions - 1]);
+                }
+                else {
+                    symbol = lhs_lookup->code;
+                    fprintf(output->debug, "adding lookahead ");
+                    boo_puts(output->debug, &lhs_lookup->name);
+                    fprintf(output->debug, " (%d) to state %d reduce %d\n", symbol,
+                        state, reduction->actions[reduction->num_actions - 1]);
+                }
             }
             else {
-                fprintf(output->debug, "adding lookahead %d to state %d -> %d\n", symbol, state, next);
+                symbol = UCHAR_MAX + 1;
+                fprintf(output->debug, "adding lookahead $eof to state %d accept\n", state);
             }
-        }
-        else {
-            symbol = 0; next = 0;
-            fprintf(output->debug, "adding lookahead $eof to state %d -> $accept\n", state);
-        }
 
-        rc = output_add_transition(output, state, symbol, -item->rule_n);
- 
-        if(rc != BOO_OK) {
-            return rc;
+            rc = lookup_add_transition(output->term, state, symbol, -reduction->pos);
+     
+            if(rc != BOO_OK) {
+                return rc;
+            }
         }
 
         tr = tr->next;
@@ -525,14 +301,34 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
     boo_lalr1_item_set_t *item_set;
     boo_lalr1_item_t *item;
     boo_lhs_lookup_t *lhs_lookup;
+    boo_uint_t i, code;
 
-    output->states = pcalloc(output->pool, grammar->num_item_sets * sizeof(boo_output_state_t));
+    code = UCHAR_MAX + 2;
 
-    if(output->states == NULL) {
+    for(i = 0 ; i != grammar->num_symbols ; i++) {
+        if(grammar->lhs_lookup[i].token && !grammar->lhs_lookup[i].literal) {
+            grammar->lhs_lookup[i].code = code;
+            code++;
+        }
+    }
+
+    output->term = lookup_create(output->pool, grammar->num_item_sets);
+
+    if(output->term == NULL) {
         return BOO_ERROR;
     }
 
-    output->num_states = grammar->num_item_sets;
+    output->term->debug = output->debug;
+
+    output->nterm = lookup_create(output->pool, grammar->num_item_sets);
+
+    if(output->nterm == NULL) {
+        return BOO_ERROR;
+    }
+
+    output->nterm->debug = output->debug;
+
+    output_renumber_reduction(grammar);
 
     item_set = boo_list_begin(&grammar->item_sets);
 
@@ -555,12 +351,25 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
                             item->transition->item_set->state_n);
                     }
                     else {
-                        fprintf(output->debug, "adding transition %d to state %d -> %d\n",
+                        symbol = lhs_lookup->code;
+
+                        fprintf(output->debug, "adding transition ");
+                        boo_puts(output->debug, &lhs_lookup->name);
+                        fprintf(output->debug, " (%d) to state %d -> %d\n",
                             symbol, item_set->state_n,
                             item->transition->item_set->state_n);
                     }
 
-                    rc = output_add_transition(output, item_set->state_n, symbol,
+                    rc = lookup_add_transition(output->term, item_set->state_n, symbol,
+                        item->transition->item_set->state_n);
+
+                    if(rc != BOO_OK) {
+                        return rc;
+                    }
+                }
+                else {
+                    rc = lookup_add_transition(output->nterm, item_set->state_n,
+                        boo_code_to_symbol(item->rhs[item->pos]),
                         item->transition->item_set->state_n);
 
                     if(rc != BOO_OK) {
@@ -592,5 +401,11 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
         item_set = boo_list_next(item_set);
     }
 
-    return output_index_states(output);
+    rc = lookup_index(output->term);
+
+    if(rc != BOO_OK) {
+        return rc;
+    }
+
+    return lookup_index(output->nterm);
 }

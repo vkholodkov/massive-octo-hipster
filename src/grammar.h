@@ -51,6 +51,7 @@ typedef struct {
     boo_list_t              actions;
     boo_list_t              item_sets;
     boo_list_t              reverse_item_sets;
+    boo_list_t              reductions;
 
     boo_uint_t              num_rules;
     boo_uint_t              num_item_sets;
@@ -111,7 +112,7 @@ typedef struct boo_lalr1_item_set_s {
  * Consists of a left-hand-side, right-hand-side
  * and a position in the right-hand-side
  */
-typedef struct {
+typedef struct boo_lalr1_item {
     boo_list_entry_t        entry;
 
     boo_uint_t              rule_n;
@@ -131,10 +132,18 @@ typedef struct {
      * What is the symbol in front of the marker of the original rule this item is derived from
      */
     boo_uint_t              original_symbol;
+    struct boo_lalr1_item   *instantiated_from;
 
     unsigned                closed:1;
     unsigned                core:1;
 } boo_lalr1_item_t;
+
+typedef struct {
+    boo_list_entry_t        entry;
+    boo_uint_t              pos;
+    boo_uint_t              num_actions;
+    boo_uint_t              *actions;
+} boo_reduction_t;
 
 #define grammar_lookup_rules_by_lhs(grammar,symbol) (boo_rule_t*)grammar->lhs_lookup[boo_code_to_symbol(symbol)].rules
 

@@ -17,7 +17,7 @@ boo_trie_t *tree_create(pool_t *pool)
         return NULL;
     }
 
-    t->root->leaf = -1;
+    t->root->leaf = NULL;
 
     t->pool = pool;
 
@@ -37,7 +37,7 @@ boo_trie_add_transition(boo_trie_t *tree, boo_trie_node_t *n, boo_uint_t c) {
 
     nn->input_filter = 0;
     nn->to = NULL;
-    nn->leaf = -1;
+    nn->leaf = NULL;
 
     nt = pcalloc(tree->pool, sizeof(boo_trie_transition_t));
 

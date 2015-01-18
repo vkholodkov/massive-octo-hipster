@@ -63,6 +63,7 @@ bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t
         lookup->rules = NULL;
         lookup->name = symbol->name;
         lookup->literal = (flags & BOO_LITERAL) ? 1 : 0;
+        lookup->token = (symbol->value & BOO_TOKEN) ? 1 : 0;
 
         grammar->num_symbols++;
     }
