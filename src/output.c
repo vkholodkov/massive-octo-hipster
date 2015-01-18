@@ -367,7 +367,7 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
                         return rc;
                     }
                 }
-                else {
+                else /*if(item->core)*/ {
                     rc = lookup_add_transition(output->nterm, item_set->state_n,
                         boo_code_to_symbol(item->rhs[item->pos]),
                         item->transition->item_set->state_n);
@@ -384,15 +384,13 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
                     return rc;
                 }
             }
-            else {
-#if 0
-                rc = darray_insert(output->darray, item_set->state_n,
-                    boo_token_get(item->rhs[item->pos]), 0);
+            else if(boo_token_get(item->rhs[item->pos]) == BOO_EOF) {
+                rc = lookup_add_transition(output->term, item_set->state_n,
+                    256, 0);
 
                 if(rc != BOO_OK) {
                     return rc;
                 }
-#endif
             }
             
             item = boo_list_next(item);
