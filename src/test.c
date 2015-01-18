@@ -38,15 +38,21 @@ int main(int argc, char *argv[]) {
 
     *top = 0;
 
-    while(p != q) {
-        if(*p >= ' ') {
-            printf("state %d input '%c'\n", *top, *p);
+    for(;;) {
+        if(p != q) {
+            if(*p >= ' ') {
+                printf("state %d input '%c'\n", *top, *p);
+            }
+            else {
+                printf("state %d input %d\n", *top, *p);
+            }
+
+            base = boo_t_base[*top] + *p;
         }
         else {
-            printf("state %d input %d\n", *top, *p);
+            printf("state %d input $eof\n", *top);
+            base = boo_t_base[*top] + BOO_EOF;
         }
-
-        base = boo_t_base[*top] + *p;
 
         if(boo_t_check[base] != *top) {
             base = boo_t_base[*top] + BOO_CHAR;
