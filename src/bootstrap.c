@@ -135,8 +135,6 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
         return BOO_ERROR;
     }
 
-    action = NULL;
-
     while(!feof(fin)) {
 
         rc = fscanf(fin, "%128s", token_buffer);
@@ -155,6 +153,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
         switch(state) {
             case s_lhs:
                 if(token.len == 1 && token.data[0] == ':') {
+                    action = NULL;
                     state = s_rhs;
                 }
                 else if(!has_lhs) {
@@ -210,7 +209,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                         }
                     }
 
-                    action = pcalloc(pool, sizeof(boo_action_t));
+                    action = pcalloc(grammar->pool, sizeof(boo_action_t));
 
                     if(action == NULL) {
                         fprintf(stderr, "insufficient memory\n");
@@ -254,6 +253,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     rule->action = action;
 
                     if(rule->rhs == NULL) {
+                        fprintf(stderr, "insufficient memory\n");
                         goto cleanup;
                     }
 
@@ -271,7 +271,6 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     if(token.data[0] == ';') {
                         state = s_lhs;
                         has_lhs = 0;
-                        action = NULL;
                     }
 
                     vector_clear(rhs_vector);
