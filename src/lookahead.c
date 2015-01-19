@@ -582,10 +582,8 @@ lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sy
 #else
         if(reduction->rule_n != item->rule_n) {
 #endif
-            fprintf(stdout, "Reduce-Reduce conflict:\n");
-            grammar_dump_item(stdout, grammar, item);
-            fprintf(stdout, "On %d %d vs %d\n", sym, reduction->rule_n, item->rule_n);
-//            return BOO_ERROR;
+            fprintf(stderr, "Multiple definitions of rule in the grammar:\n");
+            grammar_dump_rule_from_item(stderr, grammar, item);
         }
         return BOO_OK;
     }

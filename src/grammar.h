@@ -154,6 +154,7 @@ boo_int_t grammar_wrapup(boo_grammar_t*);
 void grammar_add_rule(boo_grammar_t*, boo_rule_t*);
 void grammar_item_set_add_item(boo_lalr1_item_set_t*, boo_lalr1_item_t*);
 boo_int_t grammar_generate_lr_item_sets(boo_grammar_t*, boo_list_t*);
+void grammar_dump_rule_from_item(FILE*, boo_grammar_t*, boo_lalr1_item_t*);
 void grammar_dump_item_set(FILE*, boo_grammar_t*, boo_lalr1_item_set_t*);
 void grammar_dump_item_sets(FILE*, boo_grammar_t*, boo_list_t*);
 

@@ -107,6 +107,7 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar)
     }
 
     fprintf(output->file, "\n};\n\n");
+#else
 #endif
     return BOO_OK;
 }

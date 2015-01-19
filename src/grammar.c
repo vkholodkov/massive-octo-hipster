@@ -719,6 +719,30 @@ boo_int_t grammar_generate_lookahead_sets(boo_grammar_t *grammar)
     return BOO_OK;
 }
 
+void grammar_dump_rule_from_item(FILE *out, boo_grammar_t *grammar, boo_lalr1_item_t *item)
+{
+    boo_int_t i;
+
+    boo_puts(out, &grammar->lhs_lookup[boo_code_to_symbol(item->lhs)].name);
+    fprintf(out, " -> ");
+
+    for(i = 0 ; i != item->length ; i++) {
+        if(boo_is_token(item->rhs[i])) {
+            if(boo_token_get(item->rhs[i]) == BOO_EOF) {
+                fprintf(out, "$eof ");
+            }
+            else {
+                boo_puts(out, &grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name);
+                fputc(' ', out);
+            }
+        }
+        else {
+            boo_puts(out, &grammar->lhs_lookup[boo_code_to_symbol(item->rhs[i])].name);
+            fputc(' ', out);
+        }
+    }
+}
+
 void grammar_dump_item(FILE *out, boo_grammar_t *grammar, boo_lalr1_item_t *item) {
     boo_int_t i;
 
