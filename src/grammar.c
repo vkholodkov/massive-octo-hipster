@@ -753,7 +753,7 @@ void grammar_dump_item(FILE *out, boo_grammar_t *grammar, boo_lalr1_item_t *item
     if(item->transition != NULL) {
         fprintf(out, " -- goto %d", item->transition->item_set->state_n);
     }
-
+#if 0
     if(item->remove != 0) {
         fprintf(out, " remove %d", item->remove);
     }
@@ -762,7 +762,7 @@ void grammar_dump_item(FILE *out, boo_grammar_t *grammar, boo_lalr1_item_t *item
         fprintf(out, " original ");
         boo_puts(out, &grammar->lhs_lookup[boo_code_to_symbol(item->original_symbol)].name);
     }
-
+#endif
     fprintf(out, "\n");
 }
 

@@ -3,6 +3,8 @@
 
 #include "output.h"
 
+#define multiple_reductions 0
+
 boo_output_t *output_create(pool_t *pool)
 {
     boo_output_t *output;
@@ -74,6 +76,7 @@ boo_int_t output_lookup(boo_output_t *output, boo_grammar_t *grammar)
 
 boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar)
 {
+#if multiple_reductions
     boo_uint_t i, n = 0;
     boo_reduction_t *reduction;
 
@@ -104,7 +107,7 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar)
     }
 
     fprintf(output->file, "\n};\n\n");
-
+#endif
     return BOO_OK;
 }
 
@@ -204,6 +207,7 @@ boo_int_t output_rules(boo_output_t *output, boo_grammar_t *grammar)
     return BOO_OK;
 }
 
+#if multiple_reductions
 static void
 output_renumber_reduction(boo_grammar_t *grammar)
 {
@@ -218,6 +222,7 @@ output_renumber_reduction(boo_grammar_t *grammar)
         reduction = boo_list_next(reduction);
     }
 }
+#endif
 
 static boo_int_t
 output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t state, boo_lalr1_item_t *item)
@@ -265,15 +270,25 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
 
                 if(lhs_lookup->literal) {
                     symbol = lhs_lookup->name.data[0];
+#if multiple_reductions
                     fprintf(output->debug, "adding lookahead '%c' to state %d reduce %d\n",
                         symbol, state, reduction->actions[reduction->num_actions - 1]);
+#else
+                    fprintf(output->debug, "adding lookahead '%c' to state %d reduce %d\n",
+                        symbol, state, reduction->rule_n);
+#endif
                 }
                 else {
                     symbol = lhs_lookup->code;
                     fprintf(output->debug, "adding lookahead ");
                     boo_puts(output->debug, &lhs_lookup->name);
+#if multiple_reductions
                     fprintf(output->debug, " (%d) to state %d reduce %d\n", symbol,
                         state, reduction->actions[reduction->num_actions - 1]);
+#else
+                    fprintf(output->debug, " (%d) to state %d reduce %d\n", symbol,
+                        state, reduction->rule_n);
+#endif
                 }
             }
             else {
@@ -281,7 +296,11 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
                 fprintf(output->debug, "adding lookahead $eof to state %d accept\n", state);
             }
 
+#if multiple_reductions
             rc = lookup_add_transition(output->term, state, symbol, -reduction->pos);
+#else
+            rc = lookup_add_transition(output->term, state, symbol, -reduction->rule_n);
+#endif
      
             if(rc != BOO_OK) {
                 return rc;
@@ -327,9 +346,9 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
     }
 
     output->nterm->debug = output->debug;
-
+#if multiple_reductions
     output_renumber_reduction(grammar);
-
+#endif
     item_set = boo_list_begin(&grammar->item_sets);
 
     while(item_set != boo_list_end(&grammar->item_sets)) {
