@@ -88,6 +88,10 @@ void grammar_add_rule(boo_grammar_t *grammar, boo_rule_t *rule)
 
     rule->rule_n = grammar->num_rules++;
 
+    if(rule->action != NULL) {
+        rule->action->rule_n = rule->rule_n;
+    }
+
     boo_list_append(&grammar->rules, &rule->entry);
 
     fprintf(grammar->debug, "%d) %x -> ", rule->rule_n, rule->lhs);

@@ -72,6 +72,8 @@ typedef struct {
 typedef struct {
     boo_list_entry_t        entry;
 
+    boo_uint_t              rule_n;
+
     /*
      * Start and end offsets of the action code in the source file
      */
