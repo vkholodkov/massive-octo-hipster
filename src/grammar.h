@@ -69,20 +69,6 @@ typedef struct {
     FILE                    *debug;
 } boo_grammar_t;
 
-typedef struct boo_rule_s {
-    boo_list_entry_t        entry;
-
-    boo_uint_t              rule_n;
-    boo_uint_t              length;
-    boo_uint_t              lhs;
-    boo_uint_t              *rhs;
-
-    boo_uint_t              action;
-
-    struct boo_rule_s       *lhs_hash_next;
-    void                    *booked_by_item_set;
-} boo_rule_t;
-
 typedef struct {
     boo_list_entry_t        entry;
 
@@ -91,6 +77,20 @@ typedef struct {
      */
     off_t                   start, end;
 } boo_action_t;
+
+typedef struct boo_rule_s {
+    boo_list_entry_t        entry;
+
+    boo_uint_t              rule_n;
+    boo_uint_t              length;
+    boo_uint_t              lhs;
+    boo_uint_t              *rhs;
+
+    boo_action_t            *action;
+
+    struct boo_rule_s       *lhs_hash_next;
+    void                    *booked_by_item_set;
+} boo_rule_t;
 
 typedef struct boo_lalr1_item_set_s {
     boo_list_entry_t        entry;

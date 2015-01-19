@@ -31,12 +31,14 @@ bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t
         token->data = pstrdup(grammar->pool, token->data, token->len);
 
         if(token->data == NULL) {
+            fprintf(stderr, "insufficient memory\n");
             return NULL;
         }
 
         symbol = symtab_add(grammar->symtab, token, boo_symbol_to_code(grammar->num_symbols));
 
         if(symbol == NULL) {
+            fprintf(stderr, "insufficient memory\n");
             return NULL;
         }
 
@@ -57,6 +59,7 @@ bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t
         lookup = vector_append(lhs_lookup);
 
         if(lookup == NULL) {
+            fprintf(stderr, "insufficient memory\n");
             return NULL;
         }
 
@@ -100,10 +103,11 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     boo_vector_t *lhs_lookup;
     symbol_t *symbol;
     boo_rule_t *rule;
+    boo_action_t *action;
     boo_uint_t *rhs;
     boo_lhs_lookup_t *lookup;
-    boo_uint_t flags;
-    boo_uint_t rule_no;
+    boo_uint_t flags, rule_no, pos, num_brakets, i;
+    int c;
 
     state = s_lhs;
     has_lhs = 0;
@@ -113,12 +117,14 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     rhs_vector = vector_create(pool, sizeof(boo_uint_t), 8);
 
     if(rhs_vector == NULL) {
+        fprintf(stderr, "insufficient memory\n");
         return BOO_ERROR;
     }
 
     lhs_lookup = vector_create(pool, sizeof(boo_lhs_lookup_t), (UCHAR_MAX + 1) * 2);
 
     if(lhs_lookup == NULL) {
+        fprintf(stderr, "insufficient memory\n");
         return BOO_ERROR;
     }
 
@@ -128,6 +134,8 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
         fprintf(stderr, "cannot open input file %s", filename->data);
         return BOO_ERROR;
     }
+
+    action = NULL;
 
     while(!feof(fin)) {
 
@@ -167,7 +175,61 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                 }
                 break;
             case s_rhs:
-                if(token.len == 1 && (token.data[0] == '|' || token.data[0] == ';')) {
+                if(token.len != 0 && token.data[0] == '{') {
+                    pos = ftell(fin) - token.len;
+
+                    num_brakets = 0;
+
+                    for(i = 0 ; i != token.len ; i++) {
+                        if(token.data[i] == '{') {
+                            num_brakets++;
+                        }
+                        else if(token.data[i] == '}') {
+                            num_brakets--;
+                        }
+                    }            
+
+                    if(num_brakets != 0) {
+                        for(;;) {
+                            c = fgetc(fin);
+
+                            if(c == EOF) {
+                                break;
+                            }
+
+                            if(c == '{') {
+                                num_brakets++;
+                            }
+                            else if(c == '}') {
+                                num_brakets--;
+                            }
+
+                            if(num_brakets == 0) {
+                                break;
+                            }
+                        }
+                    }
+
+                    action = pcalloc(pool, sizeof(boo_action_t));
+
+                    if(action == NULL) {
+                        fprintf(stderr, "insufficient memory\n");
+                        goto cleanup;
+                    }
+
+                    fprintf(grammar->debug, "action start %u ", pos);
+
+                    action->start = pos;
+
+                    pos = ftell(fin);
+
+                    fprintf(grammar->debug, "action end %u\n", pos);
+
+                    action->end = pos;
+
+                    boo_list_append(&grammar->actions, &action->entry);
+                }
+                else if(token.len == 1 && (token.data[0] == '|' || token.data[0] == ';')) {
                     if(lhs == BOO_START) {
                         if(bootstrap_add_accept_symbol(rhs_vector) != BOO_OK)
                         {
@@ -189,7 +251,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     rule->length = rhs_vector->nelements;
                     rule->lhs = lhs;
                     rule->rhs = palloc(grammar->pool, rule->length * sizeof(boo_uint_t));
-                    rule->action = 0;
+                    rule->action = action;
 
                     if(rule->rhs == NULL) {
                         goto cleanup;
@@ -209,6 +271,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     if(token.data[0] == ';') {
                         state = s_lhs;
                         has_lhs = 0;
+                        action = NULL;
                     }
 
                     vector_clear(rhs_vector);
@@ -253,6 +316,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     grammar->lhs_lookup = palloc(grammar->pool, (grammar->num_symbols + 1) * sizeof(boo_lhs_lookup_t));    
 
     if(grammar->lhs_lookup == NULL) {
+        fprintf(stderr, "insufficient memory\n");
         goto cleanup;
     }
 

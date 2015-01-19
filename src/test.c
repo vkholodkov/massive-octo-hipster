@@ -72,14 +72,11 @@ int main(int argc, char *argv[]) {
         else if(next < 0) {
             action = -next;
             num_actions = boo_action[action++];
-            remove = 1;
+            remove = boo_rule[boo_action[action] << 1];
 
             while(num_actions--) {
                 printf("reduce %d: ", boo_action[action]);
                 print_rule(boo_action[action]);
-
-                remove += boo_rule[boo_action[action] << 1];
-                remove -= 1;
 
                 top -= remove;
 
@@ -96,6 +93,9 @@ int main(int argc, char *argv[]) {
                 }
 
                 action++;
+
+                remove -= 1; // LHS
+                remove += boo_rule[boo_action[action] << 1]; // RHS
             }
         }
         else {
