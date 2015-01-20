@@ -5,9 +5,17 @@
 #include "string.h"
 #include "boo.h"
 
+#include "list.h"
+
+typedef struct {
+    boo_list_entry_t        entry;
+    boo_str_t               name;
+} boo_type_t;
+
 typedef struct symbol {
     struct symbol       *next;
     boo_str_t           name;
+    boo_type_t          *type;
     boo_uint_t          value;
     boo_uint_t          line;
     ssize_t             offset;

@@ -25,6 +25,7 @@ typedef struct {
     boo_str_t               name;
     void                    *rules;
     boo_uint_t              code;
+    boo_type_t              *type;
     unsigned                literal:1;
     unsigned                token:1;
 } boo_lhs_lookup_t;
@@ -47,11 +48,13 @@ typedef struct boo_free_item_set_s {
 typedef struct {
     pool_t                  *pool;
     symtab_t                *symtab;
+    boo_list_t              types;
     boo_list_t              rules;
-    boo_list_t              actions;
     boo_list_t              item_sets;
     boo_list_t              reverse_item_sets;
     boo_list_t              reductions;
+
+    boo_uint_t              root_symbol;
 
     boo_uint_t              num_rules;
     boo_uint_t              num_item_sets;
@@ -73,6 +76,7 @@ typedef struct {
     boo_list_entry_t        entry;
 
     boo_uint_t              rule_n;
+    boo_uint_t              rule_length;
 
     /*
      * Start and end offsets of the action code in the source file

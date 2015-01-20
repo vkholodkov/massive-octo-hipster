@@ -75,6 +75,106 @@ bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t
 }
 
 static boo_int_t
+bootstrap_process_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token)
+{
+    boo_int_t rc;
+    u_char *p = token->data;
+    u_char *q = p + token->len;
+    boo_str_t typename;
+    char token_buffer[128];
+    boo_uint_t flags;
+    symbol_t *symbol;
+    boo_type_t *type;
+    boo_lhs_lookup_t *lookup;
+
+    if(token->len > 4 && p[0] == 't' && p[1] == 'y' &&
+        p[2] == 'p' && p[3] == 'e' && p[4] == '<')
+    {
+        p += 5;
+
+        if(p == q) {
+            fprintf(stderr, "invalid type directive\n");
+            return BOO_ERROR;
+        }
+
+        typename.data = p;
+        typename.len = 0;
+
+        while(p != q && *p != '>') {
+            typename.len++;
+            p++;
+        }
+
+        type = pcalloc(grammar->pool, sizeof(boo_type_t));
+
+        if(type == NULL) {
+            fprintf(stderr, "insufficient memory\n");
+            return BOO_ERROR;
+        }
+
+        type->name.data = pstrdup(grammar->pool, typename.data, typename.len);
+
+        if(type->name.data == NULL) {
+            fprintf(stderr, "insufficient memory\n");
+            return BOO_ERROR;
+        }
+
+        type->name.len = typename.len;
+
+        boo_list_append(&grammar->types, &type->entry);
+
+        while(!feof(fin)) {
+
+            rc = fscanf(fin, "%128s", token_buffer);
+
+            if(rc == EOF || rc != 1) {
+                fprintf(stderr, "%%type directive broken at the end of file\n");
+                return BOO_ERROR;
+            }
+
+            token->data = (u_char*)token_buffer;
+            token->len = strlen(token_buffer);
+
+            if(token->len == 1 && token->data[0] == ';') {
+                return BOO_OK;
+            }
+            else {
+                flags = 0;
+
+                if(token->data[0] == '\'') {
+                    if(token->len != 3) {
+                        fprintf(stderr, "Invalid token");
+                        return BOO_ERROR;
+                    }
+
+                    token->data++;
+                    token->len -= 2;
+
+                    flags = BOO_LITERAL;
+                }
+
+                symbol = bootstrap_add_symbol(grammar, lhs_lookup, token, flags);
+
+                if(symbol == NULL) {
+                    return BOO_ERROR;
+                }
+
+                symbol->type = type;
+
+                lookup = lhs_lookup->elements;
+
+                lookup += boo_code_to_symbol(symbol->value);
+
+                lookup->type = type;
+            }
+        }
+        
+    }
+
+    return BOO_ERROR;
+}
+
+static boo_int_t
 bootstrap_add_accept_symbol(boo_vector_t *rhs_vector)
 {
     boo_uint_t *rhs;
@@ -82,6 +182,7 @@ bootstrap_add_accept_symbol(boo_vector_t *rhs_vector)
     rhs = vector_append(rhs_vector);
 
     if(rhs == NULL) {
+        fprintf(stderr, "insufficient memory\n");
         return BOO_ERROR;
     }
 
@@ -108,11 +209,13 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     boo_lhs_lookup_t *lookup;
     boo_uint_t flags, rule_no, pos, num_brakets, i;
     int c;
+    boo_int_t seen_rules;
 
     state = s_lhs;
     has_lhs = 0;
     lhs = 0;
     rule_no = 1;
+    seen_rules = 0;
 
     rhs_vector = vector_create(pool, sizeof(boo_uint_t), 8);
 
@@ -157,16 +260,32 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     state = s_rhs;
                 }
                 else if(!has_lhs) {
-                    symbol = bootstrap_add_symbol(grammar, lhs_lookup, &token, 0);
+                    if(token.len >= 1 && token.data[0] == '%') {
+                        token.data++; token.len--;
 
-                    if(symbol == NULL) {
-                        goto cleanup;
+                        rc = bootstrap_process_directive(fin, grammar, lhs_lookup, &token);
+
+                        if(rc != BOO_OK) {
+                            goto cleanup;
+                        }
                     }
+                    else {
+                        symbol = bootstrap_add_symbol(grammar, lhs_lookup, &token, 0);
 
-                    symbol->line = rule_no++;
+                        if(symbol == NULL) {
+                            goto cleanup;
+                        }
 
-                    lhs = symbol->value;
-                    has_lhs = 1;
+                        symbol->line = rule_no++;
+
+                        lhs = symbol->value;
+                        has_lhs = 1;
+
+                        if(!seen_rules) {
+                            grammar->root_symbol = lhs;
+                            seen_rules = 1;
+                        }
+                    }
                 }
                 else {
                     fprintf(stderr, "only one symbol is allowed on the left-hand side");
@@ -225,11 +344,9 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     fprintf(grammar->debug, "action end %u\n", pos);
 
                     action->end = pos;
-
-                    boo_list_append(&grammar->actions, &action->entry);
                 }
                 else if(token.len == 1 && (token.data[0] == '|' || token.data[0] == ';')) {
-                    if(lhs == BOO_START) {
+                    if(lhs == grammar->root_symbol) {
                         if(bootstrap_add_accept_symbol(rhs_vector) != BOO_OK)
                         {
                             goto cleanup;
@@ -244,6 +361,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     rule = pcalloc(grammar->pool, sizeof(boo_rule_t));
 
                     if(rule == NULL) {
+                        fprintf(stderr, "zero length rule\n");
                         goto cleanup;
                     }
 

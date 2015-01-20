@@ -108,9 +108,11 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
 
     fprintf(output->file, "\n};\n\n");
 #else
+    boo_rule_t *rule;
     boo_action_t *action;
     FILE *fin;
-    char buffer[1024];
+    int c;
+    boo_uint_t pos, escape;
 
     fin = fopen(filename, "r");
 
@@ -118,22 +120,79 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
         return BOO_ERROR;
     }
 
-    fprintf(output->file, "inline void boo_action(boo_int_t action) {\n");
+    fprintf(output->file,
+        "\ntypedef struct {\n" \
+        "   boo_uint_t state;\n" \
+        "   void *val;\n" \
+        "} boo_stack_elm_t;\n\n" \
+    );
+
+    fprintf(output->file, "inline void boo_action(boo_int_t action, pool_t *pool, boo_stack_elm_t *top) {\n");
     fprintf(output->file, "    switch(action) {\n");
 
-    action = boo_list_begin(&grammar->actions);
+    rule = boo_list_begin(&grammar->rules);
 
-    while(action != boo_list_end(&grammar->actions)) {
-        fprintf(output->file, "         case %d: ", action->rule_n);
+    while(rule != boo_list_end(&grammar->rules)) {
+        action = rule->action;
+
+        if(action == NULL) {
+            rule = boo_list_next(rule);
+            continue;
+        }
+
+        fprintf(output->file, "         case %d: ", rule->rule_n);
 
         fseek(fin, action->start, SEEK_SET);
 
-        fread(buffer, action->end - action->start, 1, fin);
-        fwrite(buffer, action->end - action->start, 1, output->file);
+        escape = 0;
+        pos = action->start;
+
+        while(pos != action->end) {
+            c = fgetc(fin);
+
+            if(c == EOF) {
+                break;
+            }
+
+            if(escape) {
+                if(c == '$') {
+                    if(grammar->lhs_lookup[boo_code_to_symbol(rule->lhs)].type != NULL) {
+                        fprintf(output->file, "top[%d].val.", 1 - action->rule_length);
+                        boo_puts(output->file, &grammar->lhs_lookup[boo_code_to_symbol(rule->lhs)].type->name);
+                    }
+                    else {
+                        fprintf(output->file, "top[%d].val", 1 - action->rule_length);
+                    }
+                }
+                else if(c >= '1' && c <= '9') {
+                    if(grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[c - '1'])].type != NULL) {
+                        fprintf(output->file, "top[%d].val.", 1 - action->rule_length + c - '1');
+                        boo_puts(output->file, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[c - '1'])].type->name);
+                    }
+                    else {
+                        fprintf(output->file, "top[%d].val", 1 - action->rule_length);
+                    }
+                }
+                else {
+                    fputc('$', output->file); fputc(c, output->file);
+                }
+                escape = 0;
+            }
+            else {
+                if(c == '$') {
+                    escape = 1;
+                }
+                else {
+                    fputc(c, output->file);
+                }
+            }
+
+            pos++;
+        }
 
         fprintf(output->file, "\n             break;\n");
 
-        action = boo_list_next(action);
+        rule = boo_list_next(rule);
     }
 
     fprintf(output->file, "    }\n};\n\n");

@@ -2,12 +2,27 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <limits.h>
 
 #include "boo.h"
+#include "pool.h"
+
+#define BOO_INFINITY UINT_MAX
+
+void *new_alternative(pool_t*, void*, void*);
+void *new_sequence(pool_t*, void*, void*);
+void *new_repetition(pool_t*, void*, int, int);
+void *new_any(pool_t*);
+void *new_sol(pool_t*);
+void *new_eol(pool_t*);
+void *new_set(pool_t*);
+void *new_range(pool_t*, void*, void*);
+void *new_char(pool_t*, char);
+
 #include "regex.h"
 
-//static const char *input = "[\\w*]\\.(bat|cmd|vbs|wsh|vbe|wsf|hta)[\\W]{0,}$";
-static const char *input = "/web/magmi_([a-z]*).php";
+static const char *input = "[\\w*]\\.(bat|cmd|vbs|wsh|vbe|wsf|hta)[\\W]{0,}$";
+//static const char *input = "/web/magmi_([a-z]*).php";
 //static const char *input = "<!ENTITY(\\s+)(%*\\s*)([a-zA-Z1-9_-]*)(\\s+)SYSTEM";
 
 static void
@@ -26,39 +41,39 @@ print_rule(boo_uint_t rule)
 
 int main(int argc, char *argv[]) {
     const u_char *p, *q;
-    boo_uint_t base, action, num_actions, lhs, remove;
+    boo_uint_t base, rule, lhs;
     boo_int_t next;
-    __attribute__((__unused__)) const char *sym = boo_symbol[0];
-    boo_uint_t stack[256], *top;
+    boo_stack_elm_t stack[256], *top;
+    pool_t *pool = NULL;
 
     p = (const u_char*)input;
     q = p + strlen(input);
 
     top = stack;
 
-    *top = 0;
+    top->state = 0;
 
     for(;;) {
         if(p != q) {
             if(*p >= ' ') {
-                printf("state %d input '%c'\n", *top, *p);
+                printf("state %d input '%c'\n", top->state, *p);
             }
             else {
-                printf("state %d input %d\n", *top, *p);
+                printf("state %d input %d\n", top->state, *p);
             }
 
-            base = boo_t_base[*top] + *p;
+            base = boo_t_base[top->state] + *p;
+
+            if(boo_t_check[base] != top->state) {
+                base = boo_t_base[top->state] + BOO_CHAR;
+            }
         }
         else {
-            printf("state %d input $eof\n", *top);
-            base = boo_t_base[*top] + BOO_EOF;
+            printf("state %d input $eof\n", top->state);
+            base = boo_t_base[top->state] + BOO_EOF;
         }
 
-        if(boo_t_check[base] != *top) {
-            base = boo_t_base[*top] + BOO_CHAR;
-        }
-
-        if(boo_t_check[base] != *top) {
+        if(boo_t_check[base] != top->state) {
             fprintf(stderr, "syntax error\n");
             break;
         }
@@ -67,35 +82,27 @@ int main(int argc, char *argv[]) {
 
         if(next > 0) {
             printf("shift %d\n", next);
-            *++top = next; p++;
+            top++; top->state = next; p++;
         }
         else if(next < 0) {
-            action = -next;
-            num_actions = boo_action[action++];
-            remove = boo_rule[boo_action[action] << 1];
+            rule = -next;
 
-            while(num_actions--) {
-                printf("reduce %d: ", boo_action[action]);
-                print_rule(boo_action[action]);
+            printf("reduce %d: ", rule);
+            print_rule(rule);
 
-                top -= remove;
+            boo_action(rule, pool, top);
 
-                lhs = boo_lhs[boo_action[action]];
+            top -= boo_rule[rule << 1];
 
-                base = boo_nt_base[*top] + lhs;
+            lhs = boo_lhs[rule];
 
-                if(boo_nt_check[base] == *top) {
-                    printf("\nstate %d input %s\n", *top, boo_symbol[lhs]);
-                    next = boo_nt_next[base];
-                    *++top = next;
-                    printf("shift %d\n", next);
-                    break;
-                }
+            base = boo_nt_base[top->state] + lhs;
 
-                action++;
-
-                remove -= 1; // LHS
-                remove += boo_rule[boo_action[action] << 1]; // RHS
+            if(boo_nt_check[base] == top->state) {
+                printf("\nstate %d input %s\n", top->state, boo_symbol[lhs]);
+                next = boo_nt_next[base];
+                top++; top->state = next;
+                printf("shift %d\n", next);
             }
         }
         else {
@@ -108,3 +115,49 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
+
+void *new_alternative(pool_t *pool, void *left, void *right)
+{
+    return NULL;
+}
+
+void *new_sequence(pool_t *pool, void *before, void *after)
+{
+    return NULL;
+}
+
+void *new_repetition(pool_t *pool, void *pattern, int min, int max)
+{
+    return NULL;
+}
+
+void *new_any(pool_t *pool)
+{
+    return NULL;
+}
+
+void *new_sol(pool_t *pool)
+{
+    return NULL;
+}
+
+void *new_eol(pool_t *pool)
+{
+    return NULL;
+}
+
+void *new_set(pool_t *pool)
+{
+    return NULL;
+}
+
+void *new_range(pool_t *pool, void *start, void *end)
+{
+    return NULL;
+}
+
+void *new_char(pool_t *pool, char c)
+{
+    return NULL;
+}
+

@@ -353,7 +353,7 @@ boo_int_t lookahead_generate_item_sets(boo_grammar_t *grammar, boo_list_t *dest)
 
     boo_list_append(dest, &root_item_set->entry);
 
-    root_rule = grammar->lhs_lookup[boo_code_to_symbol(BOO_START)].rules;
+    root_rule = grammar->lhs_lookup[boo_code_to_symbol(grammar->root_symbol)].rules;
 
     if(root_rule == NULL) {
         return BOO_ERROR;

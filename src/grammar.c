@@ -22,8 +22,8 @@ boo_grammar_t *grammar_create(pool_t *p)
 
     grammar->pool = p;
 
+    boo_list_init(&grammar->types);
     boo_list_init(&grammar->rules);
-    boo_list_init(&grammar->actions);
     boo_list_init(&grammar->item_sets);
     boo_list_init(&grammar->reverse_item_sets);
     boo_list_init(&grammar->reductions);
@@ -90,6 +90,7 @@ void grammar_add_rule(boo_grammar_t *grammar, boo_rule_t *rule)
 
     if(rule->action != NULL) {
         rule->action->rule_n = rule->rule_n;
+        rule->action->rule_length = rule->length;
     }
 
     boo_list_append(&grammar->rules, &rule->entry);
@@ -693,9 +694,10 @@ boo_int_t grammar_generate_lr_item_sets(boo_grammar_t *grammar, boo_list_t *dest
 
     boo_list_append(dest, &root_item_set->entry);
 
-    root_rule = grammar->lhs_lookup[boo_code_to_symbol(BOO_START)].rules;
+    root_rule = grammar->lhs_lookup[boo_code_to_symbol(grammar->root_symbol)].rules;
 
     if(root_rule == NULL) {
+        fprintf(stderr, "cannot resolve root rule\n");
         return BOO_ERROR;
     }
 
