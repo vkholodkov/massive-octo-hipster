@@ -17,7 +17,7 @@ boo_int_t output_add_grammar(boo_output_t*, boo_grammar_t*);
 boo_int_t output_codes(boo_output_t*, boo_grammar_t*);
 boo_int_t output_symbols(boo_output_t*, boo_grammar_t*);
 boo_int_t output_lookup(boo_output_t*, boo_grammar_t*);
-boo_int_t output_actions(boo_output_t*, boo_grammar_t*);
+boo_int_t output_actions(boo_output_t*, boo_grammar_t*, const char*);
 boo_int_t output_lhs(boo_output_t*, boo_grammar_t*);
 boo_int_t output_rhs(boo_output_t*, boo_grammar_t*);
 boo_int_t output_rules(boo_output_t*, boo_grammar_t*);

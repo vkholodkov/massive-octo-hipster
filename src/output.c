@@ -74,7 +74,7 @@ boo_int_t output_lookup(boo_output_t *output, boo_grammar_t *grammar)
     return lookup_write(output->file, output->nterm, "boo_nt");
 }
 
-boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar)
+boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const char *filename)
 {
 #if multiple_reductions
     boo_uint_t i, n = 0;
@@ -108,7 +108,39 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar)
 
     fprintf(output->file, "\n};\n\n");
 #else
+    boo_action_t *action;
+    FILE *fin;
+    char buffer[1024];
+
+    fin = fopen(filename, "r");
+
+    if(fin == NULL) {
+        return BOO_ERROR;
+    }
+
+    fprintf(output->file, "inline void boo_action(boo_int_t action) {\n");
+    fprintf(output->file, "    switch(action) {\n");
+
+    action = boo_list_begin(&grammar->actions);
+
+    while(action != boo_list_end(&grammar->actions)) {
+        fprintf(output->file, "         case %d: ", action->rule_n);
+
+        fseek(fin, action->start, SEEK_SET);
+
+        fread(buffer, action->end - action->start, 1, fin);
+        fwrite(buffer, action->end - action->start, 1, output->file);
+
+        fprintf(output->file, "\n             break;\n");
+
+        action = boo_list_next(action);
+    }
+
+    fprintf(output->file, "    }\n};\n\n");
 #endif
+
+    fclose(fin);
+
     return BOO_OK;
 }
 

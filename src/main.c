@@ -206,7 +206,7 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
         goto cleanup;
     }
 
-    result = output_actions(output, grammar);
+    result = output_actions(output, grammar, filenames[0]);
 
     if(result != BOO_OK) {
         result = BOO_ERROR;
