@@ -10,7 +10,7 @@ TEST=
 OBJS=pool.o symtab.o string.o list.o bootstrap.o vector.o grammar.o darray.o output.o lookahead.o trie.o lookup.o
 TARGET_OBJS=main.o
 TARGET=booc
-TEST_OBJS=test.o
+TEST_OBJS=test.o pool.o
 TEST=test
 DEPS=.deps
 

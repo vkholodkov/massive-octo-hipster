@@ -120,12 +120,42 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
         return BOO_ERROR;
     }
 
-    fprintf(output->file,
-        "\ntypedef struct {\n" \
-        "   boo_uint_t state;\n" \
-        "   void *val;\n" \
-        "} boo_stack_elm_t;\n\n" \
-    );
+
+    if(grammar->union_code != NULL) {
+        fprintf(output->file,
+            "\ntypedef struct {\n" \
+            "    boo_uint_t state;\n" \
+            "    union ");
+
+        fseek(fin, grammar->union_code->start, SEEK_SET);
+
+        pos = grammar->union_code->start;
+
+        while(pos != grammar->union_code->end) {
+            c = fgetc(fin);
+
+            if(c == EOF) {
+                break;
+            }
+
+            fputc(c, output->file);
+
+            pos++;
+        }
+
+        fprintf(output->file,
+            " val;\n" \
+            "} boo_stack_elm_t;\n\n" \
+        );
+    }
+    else {
+        fprintf(output->file,
+            "\ntypedef struct {\n" \
+            "    boo_uint_t state;\n" \
+            "    void *val;\n" \
+            "} boo_stack_elm_t;\n\n" \
+        );
+    }
 
     fprintf(output->file, "inline void boo_action(boo_int_t action, pool_t *pool, boo_stack_elm_t *top) {\n");
     fprintf(output->file, "    switch(action) {\n");

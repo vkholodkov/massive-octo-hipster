@@ -75,7 +75,7 @@ bootstrap_add_symbol(boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t
 }
 
 static boo_int_t
-bootstrap_process_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token)
+bootstrap_process_type_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token)
 {
     boo_int_t rc;
     u_char *p = token->data;
@@ -87,88 +87,164 @@ bootstrap_process_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs
     boo_type_t *type;
     boo_lhs_lookup_t *lookup;
 
-    if(token->len > 4 && p[0] == 't' && p[1] == 'y' &&
-        p[2] == 'p' && p[3] == 'e' && p[4] == '<')
-    {
-        p += 5;
+    p += 5;
 
-        if(p == q) {
-            fprintf(stderr, "invalid type directive\n");
+    if(p == q) {
+        fprintf(stderr, "invalid type directive\n");
+        return BOO_ERROR;
+    }
+
+    typename.data = p;
+    typename.len = 0;
+
+    while(p != q && *p != '>') {
+        typename.len++;
+        p++;
+    }
+
+    type = pcalloc(grammar->pool, sizeof(boo_type_t));
+
+    if(type == NULL) {
+        fprintf(stderr, "insufficient memory\n");
+        return BOO_ERROR;
+    }
+
+    type->name.data = pstrdup(grammar->pool, typename.data, typename.len);
+
+    if(type->name.data == NULL) {
+        fprintf(stderr, "insufficient memory\n");
+        return BOO_ERROR;
+    }
+
+    type->name.len = typename.len;
+
+    boo_list_append(&grammar->types, &type->entry);
+
+    while(!feof(fin)) {
+
+        rc = fscanf(fin, "%128s", token_buffer);
+
+        if(rc == EOF || rc != 1) {
+            fprintf(stderr, "%%type directive broken at the end of file\n");
             return BOO_ERROR;
         }
 
-        typename.data = p;
-        typename.len = 0;
+        token->data = (u_char*)token_buffer;
+        token->len = strlen(token_buffer);
 
-        while(p != q && *p != '>') {
-            typename.len++;
-            p++;
+        if(token->len == 1 && token->data[0] == ';') {
+            return BOO_OK;
         }
+        else {
+            flags = 0;
 
-        type = pcalloc(grammar->pool, sizeof(boo_type_t));
-
-        if(type == NULL) {
-            fprintf(stderr, "insufficient memory\n");
-            return BOO_ERROR;
-        }
-
-        type->name.data = pstrdup(grammar->pool, typename.data, typename.len);
-
-        if(type->name.data == NULL) {
-            fprintf(stderr, "insufficient memory\n");
-            return BOO_ERROR;
-        }
-
-        type->name.len = typename.len;
-
-        boo_list_append(&grammar->types, &type->entry);
-
-        while(!feof(fin)) {
-
-            rc = fscanf(fin, "%128s", token_buffer);
-
-            if(rc == EOF || rc != 1) {
-                fprintf(stderr, "%%type directive broken at the end of file\n");
-                return BOO_ERROR;
-            }
-
-            token->data = (u_char*)token_buffer;
-            token->len = strlen(token_buffer);
-
-            if(token->len == 1 && token->data[0] == ';') {
-                return BOO_OK;
-            }
-            else {
-                flags = 0;
-
-                if(token->data[0] == '\'') {
-                    if(token->len != 3) {
-                        fprintf(stderr, "Invalid token");
-                        return BOO_ERROR;
-                    }
-
-                    token->data++;
-                    token->len -= 2;
-
-                    flags = BOO_LITERAL;
-                }
-
-                symbol = bootstrap_add_symbol(grammar, lhs_lookup, token, flags);
-
-                if(symbol == NULL) {
+            if(token->data[0] == '\'') {
+                if(token->len != 3) {
+                    fprintf(stderr, "Invalid token");
                     return BOO_ERROR;
                 }
 
-                symbol->type = type;
+                token->data++;
+                token->len -= 2;
 
-                lookup = lhs_lookup->elements;
-
-                lookup += boo_code_to_symbol(symbol->value);
-
-                lookup->type = type;
+                flags = BOO_LITERAL;
             }
+
+            symbol = bootstrap_add_symbol(grammar, lhs_lookup, token, flags);
+
+            if(symbol == NULL) {
+                return BOO_ERROR;
+            }
+
+            symbol->type = type;
+
+            lookup = lhs_lookup->elements;
+
+            lookup += boo_code_to_symbol(symbol->value);
+
+            lookup->type = type;
         }
+    }
         
+    return BOO_ERROR;
+}
+
+static boo_int_t
+bootstrap_process_union_directive(FILE *fin, boo_grammar_t *grammar)
+{
+    boo_int_t rc;
+    char token_buffer[128];
+    boo_str_t token;
+    boo_uint_t c, num_brakets, pos;
+
+    if(feof(fin)) {
+        return BOO_ERROR;
+    }
+
+    rc = fscanf(fin, "%128s", token_buffer);
+
+    if(rc == EOF || rc != 1) {
+        fprintf(stderr, "%%union directive broken at the end of file\n");
+        return BOO_ERROR;
+    }
+
+    token.data = (u_char*)token_buffer;
+    token.len = strlen(token_buffer);
+
+    if(token.len != 1 || token.data[0] != '{') {
+        fprintf(stderr, "unexpected token: \"%s\"\n", token_buffer);
+        return BOO_ERROR;
+    }
+
+    pos = ftell(fin) - token.len;
+
+    num_brakets = 1;
+
+    for(;;) {
+        c = fgetc(fin);
+
+        if(c == EOF) {
+            fprintf(stderr, "%%union directive broken at the end of file\n");
+            return BOO_ERROR;
+        }
+
+        if(c == '{') {
+            num_brakets++;
+        }
+        else if(c == '}') {
+            num_brakets--;
+        }
+
+        if(num_brakets == 0) {
+            break;
+        }
+    }
+
+    grammar->union_code = pcalloc(grammar->pool, sizeof(boo_union_t));
+
+    if(grammar->union_code == NULL) {
+        fprintf(stderr, "insufficient memory\n");
+        return BOO_ERROR;
+    }
+
+    grammar->union_code->start = pos;
+    grammar->union_code->end = ftell(fin);
+
+    return BOO_OK;
+}
+
+static boo_int_t
+bootstrap_process_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token)
+{
+    if(token->len > 4 && token->data[0] == 't' && token->data[1] == 'y' &&
+        token->data[2] == 'p' && token->data[3] == 'e' && token->data[4] == '<')
+    {
+        return bootstrap_process_type_directive(fin, grammar, lhs_lookup, token);
+    }
+    else if(token->len == 5 && token->data[0] == 'u' && token->data[1] == 'n' &&
+        token->data[2] == 'i' && token->data[3] == 'o' && token->data[4] == 'n')
+    {
+        return bootstrap_process_union_directive(fin, grammar);
     }
 
     return BOO_ERROR;
@@ -237,6 +313,8 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
         fprintf(stderr, "cannot open input file %s", filename->data);
         return BOO_ERROR;
     }
+
+    action = NULL;
 
     while(!feof(fin)) {
 

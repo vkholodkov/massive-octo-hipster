@@ -26,6 +26,8 @@ int boo_const_strequ(boo_str_t *s1, const char *s2) {
 }
 
 void boo_puts(FILE *out, boo_str_t *s) {
+    fwrite(s->data, s->len, 1, out);
+#if 0
     u_char *p, *q;
 
     p = s->data;
@@ -35,6 +37,7 @@ void boo_puts(FILE *out, boo_str_t *s) {
         fputc(*p, out);
         p++;
     }
+#endif
 }
 
 void boo_escape_puts(FILE *out, boo_str_t *s)

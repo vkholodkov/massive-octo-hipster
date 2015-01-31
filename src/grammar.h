@@ -22,6 +22,13 @@
 struct boo_lalr1_item_set_s;
 
 typedef struct {
+    /*
+     * Start and end offsets of the union code in the source file
+     */
+    off_t                   start, end;
+} boo_union_t;
+
+typedef struct {
     boo_str_t               name;
     void                    *rules;
     boo_uint_t              code;
@@ -53,6 +60,7 @@ typedef struct {
     boo_list_t              item_sets;
     boo_list_t              reverse_item_sets;
     boo_list_t              reductions;
+    boo_union_t             *union_code;
 
     boo_uint_t              root_symbol;
 
