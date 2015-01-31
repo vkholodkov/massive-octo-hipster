@@ -2,4 +2,6 @@
 *.o
 .vimsession
 core
-booc
+moh
+config.h
+Makefile
