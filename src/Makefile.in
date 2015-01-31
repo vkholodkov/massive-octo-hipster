@@ -14,7 +14,7 @@ TEST_OBJS=test.o pool.o
 TEST=test
 DEPS=.deps
 
-all: $(TARGET) $(TEST)
+all: $(TARGET)
 
 $(TARGET): $(TARGET_OBJS) $(OBJS)
 	@echo "Linking $@"
