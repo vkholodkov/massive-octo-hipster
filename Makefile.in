@@ -2,9 +2,9 @@
 SUBDIRS = src
 INSTALL = @INSTALL@
 
-sbindir		= @sbindir@
-etcdir		= @etcdir@
-startupdir	= @startupdir@
+prefix		= @prefix@
+exec_prefix		= @exec_prefix@
+bindir		= @bindir@
 mandir		= @mandir@
 
 all: 
@@ -34,3 +34,6 @@ distclean:
 	done
 	@rm -f config.cache config.status config.log src/config.h @OUTPUT_FILES@
 	@rm -rf @OUTPATH@
+
+install:
+	$(INSTALL) -o root -g root -m 755 src/moh $(bindir)/moh

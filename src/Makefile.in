@@ -8,15 +8,15 @@ LIBS=@LIBS@
 TEST_OBJS=
 TEST=
 OBJS=pool.o symtab.o string.o list.o bootstrap.o vector.o grammar.o darray.o output.o lookahead.o trie.o lookup.o
-TARGET_OBJS=main.o
-TARGET=booc
+MOH_OBJS=main.o
+MOH=moh
 TEST_OBJS=test.o pool.o
 TEST=test
 DEPS=.deps
 
-all: $(TARGET)
+all: $(MOH)
 
-$(TARGET): $(TARGET_OBJS) $(OBJS)
+$(MOH): $(MOH_OBJS) $(OBJS)
 	@echo "Linking $@"
 	$(CC) $^ -o $@ $(CDFLAGS) $(LDFLAGS) $(LIBS)
 
@@ -31,7 +31,7 @@ $(TEST): $(TEST_OBJS)
 	gcc -M -MF$@ $(CFLAGS) $<
 
 clean:
-	rm -f core $(OBJS) $(TARGET_OBJS) $(TEST_OBJS) $(TEST_RUNNER_OBJS) $(MODULE) $(TEST) $(MODULE)
+	rm -f core $(OBJS) $(MOH_OBJS) $(TEST_OBJS) $(TEST_RUNNER_OBJS) $(TEST) $(MOH)
 
 distclean: clean
 	rm -f $(DEPS) $(patsubst %.o,%.d,$(OBJS)) $(patsubst %.o,%.d,$(TEST_OBJS))
