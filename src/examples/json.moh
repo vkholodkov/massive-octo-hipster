@@ -1,0 +1,35 @@
+
+json 
+    : object
+    | array
+    ;
+
+object
+    : '{' members '}'
+    | '{' '}'
+    ;
+
+members
+    : members ',' pair
+    | pair
+    ;
+
+pair
+    : STRING ':' value
+    ;
+
+value
+    : object
+    | array
+    | STRING
+    ;
+
+array
+    : '[' ']'
+    | '[' elements ']'
+    ;
+
+elements
+    : value
+    | elements value
+    ;

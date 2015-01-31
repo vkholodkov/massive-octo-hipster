@@ -1,0 +1,16 @@
+
+grammar : a a ;
+
+a : ts
+  | fs ;
+
+ts : t
+   | ts t ;
+
+t : T ;
+
+fs : f
+   | fs f ;
+
+f : F ;
+

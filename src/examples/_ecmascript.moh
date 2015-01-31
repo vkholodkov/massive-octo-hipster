@@ -1,0 +1,280 @@
+
+PrimaryExpression : THIS
+                  | IDENTIFIER
+                  | LITERAL
+                  | ArrayLiteral
+                  | ObjectLiteral
+                  | '(' Expression ')'
+                  ;
+
+ArrayLiteral
+    : '[' Elision ']'
+    | '[' ElementList ']'
+    | '[' ElementList ',' ']'
+    | '[' ElementList ',' Elision ']'
+    ;
+
+ElementList
+    : Elision AssignmentExpression
+    | AssignmentExpression
+    | ElementList ',' Elision AssignmentExpression
+    | ElementList ',' AssignmentExpression
+    ;
+
+Elision
+    : ','
+    | Elision ','
+    ;
+
+ObjectLiteral
+    : '{' '}'
+    | '{' PropertyNameAndValueList '}'
+    | '{' PropertyNameAndValueList ',' '}'
+    ;
+
+PropertyNameAndValueList
+    : PropertyAssignment
+    | PropertyNameAndValueList ',' PropertyAssignment
+    ;
+
+PropertyAssignment
+    : PropertyName ':' AssignmentExpression
+    | GET PropertyName '(' ')' '{' '}'
+    | SET PropertyName '(' PropertySetParameterList ')' '{' '}'
+    ;
+
+PropertyName
+    : IDENTIFIERNAME
+    | STRINGLITERAL
+    | NUMERICLITERAL
+    ;
+
+PropertySetParameterList
+    : IDENTIFIER
+    ;
+
+MemberExpression
+    : PrimaryExpression
+    | MemberExpression '[' Expression ']'
+    | MemberExpression '.' IDENTIFIERNAME
+    | NEW MemberExpression Arguments
+    ;
+
+NewExpression
+    : MemberExpression
+    | NEW NewExpression
+    ;
+
+CallExpression
+    : MemberExpression Arguments
+    | CallExpression Arguments
+    | CallExpression '[' Expression ']'
+    | CallExpression '.' IDENTIFIERNAME
+    ;
+
+Arguments
+    : '(' ')'
+    | '(' ArgumentList ')'
+    ;
+
+ArgumentList
+    : AssignmentExpression
+    | ArgumentList ',' AssignmentExpression
+    ;
+
+LeftHandSideExpression
+    : NewExpression
+    | CallExpression
+    ;
+
+PostfixExpression
+    : LeftHandSideExpression
+    | LeftHandSideExpression PLUSPLUS
+    | LeftHandSideExpression MINUSMINUS
+    ;
+
+UnaryExpression
+    : PostfixExpression
+    | DELETE UnaryExpression
+    | VOID UnaryExpression
+    | TYPEOF UnaryExpression
+    | PLUSPLUS UnaryExpression
+    | MINUSMINUS UnaryExpression
+    | '+' UnaryExpression
+    | '-' UnaryExpression
+    | '~' UnaryExpression
+    | '!' UnaryExpression
+    ;
+
+MultiplicativeExpression
+    : UnaryExpression
+    | MultiplicativeExpression '*' UnaryExpression
+    | MultiplicativeExpression '/' UnaryExpression
+    | MultiplicativeExpression '%' UnaryExpression
+    ;
+
+AdditiveExpression
+    : MultiplicativeExpression
+    | AdditiveExpression '+' MultiplicativeExpression
+    | AdditiveExpression '-' MultiplicativeExpression
+    ;
+
+ShiftExpression
+    : AdditiveExpression
+    | ShiftExpression SHIFTL AdditiveExpression
+    | ShiftExpression SHIFTR AdditiveExpression
+    | ShiftExpression USHIFTR AdditiveExpression
+    ;
+
+RelationalExpression
+    : ShiftExpression
+    | RelationalExpression LT ShiftExpression
+    | RelationalExpression GT ShiftExpression
+    | RelationalExpression LE ShiftExpression
+    | RelationalExpression LE ShiftExpression
+    | RelationalExpression INSTANCEOF ShiftExpression
+    | RelationalExpression IN ShiftExpression
+    ;
+
+RelationalExpression
+    : ShiftExpression
+    | RelationalExpression LT ShiftExpression
+    | RelationalExpression GT ShiftExpression
+    | RelationalExpression LE ShiftExpression
+    | RelationalExpression GE ShiftExpression
+    | RelationalExpression INSTANCEOF ShiftExpression
+    ;
+
+EqualityExpression
+    : RelationalExpression
+    | EqualityExpression EQ RelationalExpression
+    | EqualityExpression NE RelationalExpression
+    | EqualityExpression EEQ RelationalExpression
+    | EqualityExpression NNE RelationalExpression
+    ;
+
+BitwiseANDExpression
+    : EqualityExpression
+    | BitwiseANDExpression '&' EqualityExpression
+    ;
+
+BitwiseXORExpression
+    : EqualityExpression
+    | BitwiseXORExpression '^' EqualityExpression
+    ;
+
+BitwiseORExpression
+    : EqualityExpression
+    | BitwiseORExpression '|' EqualityExpression
+    ;
+
+LogicalANDExpression
+    : BitwiseORExpression
+    | LogicalANDExpression ANDAND BitwiseORExpression
+    ;
+
+LogicalORExpression
+    : LogicalANDExpression
+    | LogicalORExpression OROR LogicalANDExpression
+    ;
+
+ConditionalExpression
+    : LogicalORExpression
+    | LogicalORExpression '?' AssignmentExpression ':' AssignmentExpression
+    ;
+
+AssignmentExpression
+    : ConditionalExpression
+    | LeftHandSideExpression '=' AssignmentExpression
+    | LeftHandSideExpression AssignmentOperator AssignmentExpression
+    ;
+
+AssignmentOperator
+    : MUL_ASSIGN
+    | DIV_ASSIGN
+    | MOD_ASSIGN
+    | ADD_ASSIGN
+    | SUB_ASSIGN
+    | SHIFTL_ASSIGN
+    | SHIFTR_ASSIGN
+    | USHIFTR_ASSIGN
+    | AND_ASSIGN
+    | XOR_ASSIGN
+    | OR_ASSIGN
+    ;
+
+Expression
+    : AssignmentExpression
+    | Expression ',' AssignmentExpression
+    ;
+
+Statement
+    : Block
+    | VariableStatement
+    | EmptyStatement
+    | ExpressionStatement
+    | IfStatement
+    | IterationStatement
+    ;
+
+Block
+    : '{' '}'
+    | '{' StatementList '}'
+    ;
+
+StatementList
+    : Statement
+    | StatementList Statement
+    ;
+
+VariableStatement
+    : VAR VariableDeclarationList
+    ;
+
+VariableDeclarationList
+    : VariableDeclaration
+    | VariableDeclarationList ',' VariableDeclaration
+    ;
+
+VariableDeclaration
+    : IDENTIFIER Initialiser
+    | IDENTIFIER
+    ;
+
+Initialiser
+    : '=' AssignmentExpression
+    ;
+
+EmptyStatement
+    : ';'
+    ;
+
+ExpressionStatement
+    : Expression
+    ;
+
+IfStatement
+    : IF '(' Expression ')' Statement ELSE Statement
+    | IF '(' Expression ')' Statement
+    ;
+
+IterationStatement
+    : DO Statement WHILE '(' Expression ')' ';'
+    | WHILE '(' Expression ')' Statement
+    | FOR '(' ';' ';' ')' Statement
+    | FOR '(' Expression ';' ';' ')' Statement
+    | FOR '(' ';' Expression ';' ')' Statement
+    | FOR '(' ';' ';' Expression ')' Statement
+    | FOR '(' Expression ';' Expression ';' ')' Statement
+    | FOR '(' Expression ';' ';' Expression ')' Statement
+    | FOR '(' ';' Expression ';' Expression ')' Statement
+    | FOR '(' Expression ';' Expression ';' Expression ')' Statement
+    | FOR '(' VAR VariableDeclarationList ';' Expression ';' Expression ')' Statement
+    | FOR '(' VAR VariableDeclarationList ';' ';' Expression ')' Statement
+    | FOR '(' VAR VariableDeclarationList ';' Expression ';' ')' Statement
+    | FOR '(' VAR VariableDeclarationList ';' ';' ')' Statement
+    | FOR '(' LeftHandSideExpression IN Expression ')' Statement
+    | FOR '(' VAR VariableDeclaration IN Expression ')' Statement
+    ;
+
+

@@ -1,0 +1,83 @@
+
+parse_generator
+    : declarations
+    ;
+
+declarations
+    : declaration
+    | declarations declaration
+    ;
+
+declaration
+    : import
+    | token
+    | type
+    | grammar
+    | parser
+    ;
+
+import
+    : IMPORT STRING ';'
+    ;
+
+token
+    : TOKEN symbols ';'
+    ;
+
+type
+    : TYPE '<' SYMBOL '>' symbols ';'
+    ;
+
+symbols
+    : SYMBOL
+    | symbols SYMBOL
+    ;
+
+grammar
+    : GRAMMAR SYMBOL '{' grammar_declarations '}'
+    ;
+
+grammar_declarations
+    : grammar_declaration
+    | grammar_declarations grammar_declaration
+    ;
+
+grammar_declaration
+    : assoc
+    | rule
+    ;
+
+assoc
+    : LEFT
+    | RIGHT
+    | NOASSOC
+    ;
+
+rule
+    : SYMBOL ':' alternatives ';'
+    ;
+
+alternatives
+    : symbols
+    | alternatives '|' symbols
+    ;
+
+parser
+    : PARSER SYMBOL '{' parser_directives '}'
+    ;
+
+parser_directives
+    : parser_directive
+    | parser_directives parser_directive
+    ;
+
+parser_directive
+    : SYMBOL arguments ';'
+    ;
+
+arguments
+    : SYMBOL
+    | arguments SYMBOL
+    ;
+
+

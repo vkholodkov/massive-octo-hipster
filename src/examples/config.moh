@@ -1,0 +1,28 @@
+
+config
+    : directives
+    ;
+
+directives
+    : directive
+    | directives directive
+    ;
+
+directive
+    : TOKEN ';'
+    | TOKEN arguments ';'
+    | TOKEN '{' directives '}' 
+    | TOKEN arguments '{' directives '}' 
+    ;
+
+arguments
+    : argument
+    | arguments argument
+    ;
+
+argument
+    : STRING
+    | TOKEN
+    | NUMBER
+    ;
+        

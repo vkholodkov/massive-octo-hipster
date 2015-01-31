@@ -1,0 +1,79 @@
+
+program
+    : declarations
+    ;
+
+declarations
+    : declaration
+    | declarations declaration
+    ;
+
+declaration
+    : rule
+    | fact
+    ;
+
+fact
+    : term_item '.'
+    ;
+
+rule
+    : term_item ':' '-' and_item '.'
+    ;
+
+and_item
+    : or_item
+    | and_item ',' or_item
+    ;
+
+or_item
+    : expr_item
+    | or_item ';' expr_item
+    ;
+
+expr_item
+    : '+' expr_item
+    | paren_item
+    | atom_item REL arg_item
+    | term_item
+    ;
+
+paren_item
+    : '(' and_item ')'
+    ;
+
+atom_item
+    : IDENT
+    | NUMBER
+    | STRING
+    | list_item
+    ;
+
+list_item
+    : '[' atom_list ']'
+    ;
+
+atom_list
+    : atom_item
+    | atom_list ',' atom_item
+    ;
+
+arg_item
+    : op_item
+    | term_item
+    | paren_item
+    | atom_item
+    ;
+
+term_item
+    : IDENT '(' arg_list ')'
+    ;
+
+arg_list
+    : arg_item
+    | arg_list ',' arg_item
+    ;
+
+op_item
+    : atom_item '/' atom_item
+    ;

@@ -1,0 +1,75 @@
+
+parser
+    : declarations
+    ;
+
+declarations
+    : declaration
+    | declarations declaration
+    ;
+
+declaration
+    | grammar
+    | parser
+    ;
+
+grammar
+    : GRAMMAR SYMBOL '{' statements '}'
+
+statements
+    : statement
+    | statements statement
+    ;
+
+statement
+    : type
+    | token
+    | rule
+    ;
+
+type
+    : TYPE SYMBOL symbols
+    ;
+
+symbols
+    : SYMBOL
+    | symbols SYMBOL
+    ;
+
+token
+    : TOKEN SYMBOL
+    ;
+
+rule
+    : SYMBOL ':' alternatives ';'
+    ;
+
+alternatives
+    : symbols
+    | alternatives '|' symbols
+    ;
+
+symbols
+    : SYMBOL
+    | symbols SYMBOL
+    ;
+
+parser
+    : PARSER SYMBOL '{' parser_directives '}'
+    ;
+
+parser_directives
+    : parser_directive
+    | parser_directives parser_directive
+    ;
+
+parser_directive
+    : SYMBOL arguments ';'
+    ;
+
+arguments
+    : argument
+    | arguments argument
+    ;
+
+
