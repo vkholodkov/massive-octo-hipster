@@ -21,7 +21,11 @@ After that run:
     make depend
     make
 
-This should produce a binary src/booc, which is a provisional name for the prototype.
+This should produce a binary src/moh. To install run:
+
+    make install
+
+This will install the binary into your build path.
 
 
 How to run
@@ -49,3 +53,4 @@ Q: What does the name stand for?
 A: I used github project suggestion tool to generate a name and it came up with Massive
    octo hipster. In my experience content fills the name and not the other way around.
    The name sounds cool, so let's fill it with something as cool as the name.
+
