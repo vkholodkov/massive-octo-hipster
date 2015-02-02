@@ -92,7 +92,7 @@ void *palloc(pool_t *pool, size_t size) {
         c = c->next;
     }
 
-    fprintf(stderr, "malloc: %u\n", pagesize);
+    fprintf(stderr, "malloc: %zu\n", pagesize);
     c = malloc(pagesize);
 
     if(c == NULL) {
@@ -138,7 +138,7 @@ static void *palloc_large(pool_t *pool, size_t size) {
     void *mem;
     plarge_t *large;
 
-    fprintf(stderr, "alloc large size=%u\n", size);
+    fprintf(stderr, "alloc large size=%zu\n", size);
 
     mem = malloc(size);
 
