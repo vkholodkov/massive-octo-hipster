@@ -346,6 +346,59 @@ output_renumber_reduction(boo_grammar_t *grammar)
 }
 #endif
 
+static void
+output_conflict(boo_output_t *output, boo_grammar_t *grammar, boo_lalr1_item_t *item,
+    boo_uint_t state, boo_uint_t code, boo_int_t target1, boo_int_t target2)
+{
+    const char *conflict1_type;
+    const char *conflict2_type;
+    boo_lhs_lookup_t *lhs_lookup;
+    boo_int_t tmp;
+    boo_rule_t *rule;
+
+    if(target2 >= 0) {
+        tmp = target2;
+        target2 = target1;
+        target1 = tmp;
+    }
+
+    conflict1_type = target1 >= 0 ? "shift" : "reduce";
+    conflict2_type = target2 >= 0 ? "shift" : "reduce";
+
+    if(code != BOO_EOF) {
+        lhs_lookup = grammar->lhs_lookup + boo_code_to_symbol(code);
+
+        if(lhs_lookup->literal) {
+            fprintf(stderr, "%s-%s conflict in state %u on '%c':\n", conflict1_type, conflict2_type,
+                state, lhs_lookup->name.data[0]);
+        }
+        else {
+            fprintf(stderr, "%s-%s conflict in state %u on ", conflict1_type, conflict2_type, state);
+            boo_puts(output->debug, &lhs_lookup->name);
+            fprintf(stderr, ":\n");
+        }
+    }
+    else {
+        fprintf(stderr, "%s-%s conflict in state %u on $eof:\n", conflict1_type, conflict2_type, state);
+    }
+
+    grammar_dump_item(stderr, grammar, item);
+
+    fprintf(stderr, "%s %d/%s ", conflict1_type, target1, conflict2_type);
+
+    rule = boo_list_begin(&grammar->rules);
+
+    while(rule != boo_list_end(&grammar->rules)) {
+        if(rule->rule_n == -target2) {
+            grammar_dump_rule(stderr, grammar, rule);
+            break;
+        }
+        rule = boo_list_next(rule);
+    }
+
+    fprintf(stderr, "\n\n");
+}
+
 static boo_int_t
 output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t state, boo_lalr1_item_t *item)
 {
@@ -418,14 +471,21 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
                 fprintf(output->debug, "adding lookahead $eof to state %d accept\n", state);
             }
 
+            rc = lookup_get_transition(output->term, state, symbol);
+
+            if(rc != BOO_DECLINED && rc != -reduction->rule_n) {
+                output_conflict(output, grammar, item, state, tr->input, -reduction->rule_n, rc);
+            }
+            else {
 #if multiple_reductions
-            rc = lookup_add_transition(output->term, state, symbol, -reduction->pos);
+                rc = lookup_add_transition(output->term, state, symbol, -reduction->pos);
 #else
-            rc = lookup_add_transition(output->term, state, symbol, -reduction->rule_n);
+                rc = lookup_add_transition(output->term, state, symbol, -reduction->rule_n);
 #endif
-     
-            if(rc != BOO_OK) {
-                return rc;
+
+                if(rc != BOO_OK) {
+                    return rc;
+                }
             }
         }
 
@@ -501,11 +561,19 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
                             item->transition->item_set->state_n);
                     }
 
-                    rc = lookup_add_transition(output->term, item_set->state_n, symbol,
-                        item->transition->item_set->state_n);
+                    rc = lookup_get_transition(output->term, item_set->state_n, symbol);
 
-                    if(rc != BOO_OK) {
-                        return rc;
+                    if(rc != BOO_DECLINED && rc != item->transition->item_set->state_n) {
+                        output_conflict(output, grammar, item, item_set->state_n, item->rhs[item->pos],
+                            item->transition->item_set->state_n, rc);
+                    }
+                    else {
+                        rc = lookup_add_transition(output->term, item_set->state_n, symbol,
+                            item->transition->item_set->state_n);
+
+                        if(rc != BOO_OK) {
+                            return rc;
+                        }
                     }
                 }
                 else /*if(item->core)*/ {

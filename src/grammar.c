@@ -49,6 +49,7 @@ boo_int_t grammar_wrapup(boo_grammar_t *grammar) {
     boo_int_t i;
     boo_lhs_lookup_t *lhs_lookup;
     symbol_t *symbol;
+    boo_rule_t *rule;
 
     grammar->transition_lookup = pcalloc(grammar->pool,
         boo_symbol_to_code(grammar->num_symbols) * sizeof(boo_trans_lookup_t));    
@@ -76,6 +77,15 @@ boo_int_t grammar_wrapup(boo_grammar_t *grammar) {
         }
     }
 
+    rule = boo_list_begin(&grammar->rules);
+
+    while(rule != boo_list_end(&grammar->rules)) {
+        fprintf(grammar->debug, "%d) ", rule->rule_n);
+        grammar_dump_rule(grammar->debug, grammar, rule);
+        fprintf(grammar->debug, "\n");
+        rule = boo_list_next(rule);
+    }
+
     return BOO_OK;
 }
 
@@ -84,8 +94,6 @@ boo_int_t grammar_wrapup(boo_grammar_t *grammar) {
  */
 void grammar_add_rule(boo_grammar_t *grammar, boo_rule_t *rule)
 {
-    boo_int_t i;
-
     rule->rule_n = grammar->num_rules++;
 
     if(rule->action != NULL) {
@@ -94,14 +102,6 @@ void grammar_add_rule(boo_grammar_t *grammar, boo_rule_t *rule)
     }
 
     boo_list_append(&grammar->rules, &rule->entry);
-
-    fprintf(grammar->debug, "%d) %x -> ", rule->rule_n, rule->lhs);
-
-    for(i = 0 ; i != rule->length ; i++) {
-        fprintf(grammar->debug, "%x ", rule->rhs[i]);
-    }
-
-    fprintf(grammar->debug, "\n");
 }
 
 /*
@@ -723,6 +723,30 @@ boo_int_t grammar_generate_lr_item_sets(boo_grammar_t *grammar, boo_list_t *dest
 boo_int_t grammar_generate_lookahead_sets(boo_grammar_t *grammar)
 {
     return BOO_OK;
+}
+
+void grammar_dump_rule(FILE *out, boo_grammar_t *grammar, boo_rule_t *rule)
+{
+    boo_int_t i;
+
+    boo_puts(out, &grammar->lhs_lookup[boo_code_to_symbol(rule->lhs)].name);
+    fprintf(out, " -> ");
+
+    for(i = 0 ; i != rule->length ; i++) {
+        if(boo_is_token(rule->rhs[i])) {
+            if(boo_token_get(rule->rhs[i]) == BOO_EOF) {
+                fprintf(out, "$eof ");
+            }
+            else {
+                boo_puts(out, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[i])].name);
+                fputc(' ', out);
+            }
+        }
+        else {
+            boo_puts(out, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[i])].name);
+            fputc(' ', out);
+        }
+    }
 }
 
 void grammar_dump_rule_from_item(FILE *out, boo_grammar_t *grammar, boo_lalr1_item_t *item)

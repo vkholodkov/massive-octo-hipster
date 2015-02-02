@@ -172,6 +172,14 @@ boo_int_t lookup_add_transition(boo_lookup_table_t *lookup, boo_uint_t state, bo
         before = lookup->states[state].transitions;
 
         while(before != NULL) {
+            if(before->input == nt->input) {
+                if(before->target == nt->target) {
+                    return BOO_OK;
+                }
+
+                return BOO_DECLINED;
+            }
+
             if(before->input > nt->input) {
                 break;
             }
@@ -194,6 +202,23 @@ boo_int_t lookup_add_transition(boo_lookup_table_t *lookup, boo_uint_t state, bo
     }
 
     return BOO_OK;
+}
+
+boo_int_t lookup_get_transition(boo_lookup_table_t *lookup, boo_uint_t state, boo_uint_t symbol)
+{
+    boo_lookup_transition_t *t;
+
+    t = lookup->states[state].transitions;
+
+    while(t != NULL) {
+        if(t->input == symbol) {
+            return t->target;
+        }
+
+        t = t->next;
+    }
+
+    return BOO_DECLINED;
 }
 
 /*
@@ -220,6 +245,7 @@ lookup_can_store_transitions(boo_lookup_table_t *lookup, boo_int_t base, boo_loo
         to = from + 1;
 
         if(g == NULL) {
+            fprintf(stderr, "fatal error: no more gaps, but there are more symbols\n");
             return BOO_DECLINED;
         }
 
