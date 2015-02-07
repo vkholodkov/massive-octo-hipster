@@ -1,4 +1,6 @@
 
+#include <string.h>
+
 #include "lookup.h"
 
 #define boo_trans_len (2 * sizeof(boo_int_t))
@@ -456,6 +458,8 @@ boo_int_t lookup_index(boo_lookup_table_t *lookup) {
     if(lookup->next == NULL) {
         return BOO_ERROR;
     }
+
+    memset(lookup->next, 0xff, lookup->end * boo_trans_len);
 
     p = lookup->states;
 
