@@ -45,6 +45,8 @@ boo_grammar_t *grammar_create(pool_t *p)
     return grammar;
 }
 
+static boo_str_t boo_context_str = boo_string("void");
+
 boo_int_t grammar_wrapup(boo_grammar_t *grammar) {
     boo_int_t i;
     boo_lhs_lookup_t *lhs_lookup;
@@ -56,6 +58,10 @@ boo_int_t grammar_wrapup(boo_grammar_t *grammar) {
 
     if(grammar->transition_lookup == NULL) {
         return BOO_ERROR;
+    }
+
+    if(grammar->context == NULL) {
+        grammar->context = &boo_context_str;
     }
 
     memset(grammar->transition_lookup, 0,

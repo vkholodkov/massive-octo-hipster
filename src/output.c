@@ -157,7 +157,9 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
         );
     }
 
-    fprintf(output->file, "inline void boo_action(boo_int_t action, pool_t *pool, boo_stack_elm_t *top) {\n");
+    fprintf(output->file, "inline void boo_action(boo_int_t action, ");
+    boo_puts(output->file, grammar->context);
+    fprintf(output->file, " *context, boo_stack_elm_t *top) {\n");
     fprintf(output->file, "    switch(action) {\n");
 
     rule = boo_list_begin(&grammar->rules);

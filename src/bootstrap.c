@@ -234,6 +234,52 @@ bootstrap_process_union_directive(FILE *fin, boo_grammar_t *grammar)
 }
 
 static boo_int_t
+bootstrap_process_context_directive(FILE *fin, boo_grammar_t *grammar, boo_str_t *token)
+{
+    boo_int_t rc;
+    char token_buffer[128];
+
+    while(!feof(fin)) {
+
+        rc = fscanf(fin, "%128s", token_buffer);
+
+        if(rc == EOF || rc != 1) {
+            fprintf(stderr, "%%type directive broken at the end of file\n");
+            return BOO_ERROR;
+        }
+
+        token->data = (u_char*)token_buffer;
+        token->len = strlen(token_buffer);
+
+        if(token->len == 1 && token->data[0] == ';') {
+            return BOO_OK;
+        }
+        else {
+            if(grammar->context != NULL) {
+                fprintf(stderr, "too many values in %%context directive\n");
+                return BOO_ERROR;
+            }
+
+            grammar->context = pcalloc(grammar->pool, sizeof(boo_str_t));
+
+            if(grammar->context == NULL) {
+                return BOO_ERROR;
+            }
+        
+            grammar->context->data = pstrdup(grammar->pool, token->data, token->len);
+
+            if(grammar->context->data == NULL) {
+                return BOO_ERROR;
+            }
+
+            grammar->context->len = token->len;
+        }
+    }
+        
+    return BOO_ERROR;
+}
+
+static boo_int_t
 bootstrap_process_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token)
 {
     if(token->len > 4 && token->data[0] == 't' && token->data[1] == 'y' &&
@@ -245,6 +291,12 @@ bootstrap_process_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs
         token->data[2] == 'i' && token->data[3] == 'o' && token->data[4] == 'n')
     {
         return bootstrap_process_union_directive(fin, grammar);
+    }
+    else if(token->len == 7 && token->data[0] == 'c' && token->data[1] == 'o' &&
+        token->data[2] == 'n' && token->data[3] == 't' && token->data[4] == 'e' &&
+        token->data[5] == 'x' && token->data[6] == 't')
+    {
+        return bootstrap_process_context_directive(fin, grammar, token);
     }
 
     return BOO_ERROR;
