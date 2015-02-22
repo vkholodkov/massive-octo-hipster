@@ -304,7 +304,7 @@ lookup_book_space(boo_lookup_table_t *lookup, boo_int_t base, boo_lookup_state_t
             fprintf(lookup->debug, "extending space to %i, end is now %i\n", pos, lookup->end);
         }
 
-        fprintf(lookup->debug, "placing symbol %u of state %ld pointing to %d, pos %u\n", t->input, n - lookup->states, t->target, pos);
+        fprintf(lookup->debug, "placing symbol %u of state %ld pointing to %d, pos %u\n", t->input, (long int)(n - lookup->states), t->target, pos);
 
         rc = lookup_fill_gap(lookup, pos, pos + 1);
 
