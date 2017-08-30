@@ -188,22 +188,26 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
 
             if(escape) {
                 if(c == '$') {
-                    if(grammar->lhs_lookup[boo_code_to_symbol(rule->lhs)].type != NULL) {
-                        fprintf(output->file, "top[%d].val.", 1 - action->rule_length);
-                        boo_puts(output->file, &grammar->lhs_lookup[boo_code_to_symbol(rule->lhs)].type->name);
+                    if(grammar->lhs_lookup[boo_code_to_symbol(rule->lhs)].type == NULL) {
+                        fprintf(stderr, "symbol ");
+                        boo_puts(stderr, &grammar->lhs_lookup[boo_code_to_symbol(rule->lhs)].name);
+                        fprintf(stderr, " is used in an action but has no type assigned\n");
+                        return BOO_ERROR;
                     }
-                    else {
-                        fprintf(output->file, "top[%d].val", 1 - action->rule_length);
-                    }
+
+                    fprintf(output->file, "top[%d].val.", 1 - action->rule_length);
+                    boo_puts(output->file, &grammar->lhs_lookup[boo_code_to_symbol(rule->lhs)].type->name);
                 }
                 else if(c >= '1' && c <= '9') {
-                    if(grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[c - '1'])].type != NULL) {
-                        fprintf(output->file, "top[%d].val.", 1 - action->rule_length + c - '1');
-                        boo_puts(output->file, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[c - '1'])].type->name);
+                    if(grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[c - '1'])].type == NULL) {
+                        fprintf(stderr, "symbol ");
+                        boo_puts(stderr, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[c - '1'])].name);
+                        fprintf(stderr, " is used in an action but has no type assigned\n");
+                        return BOO_ERROR;
                     }
-                    else {
-                        fprintf(output->file, "top[%d].val", 1 - action->rule_length);
-                    }
+
+                    fprintf(output->file, "top[%d].val.", 1 - action->rule_length + c - '1');
+                    boo_puts(output->file, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[c - '1'])].type->name);
                 }
                 else {
                     fputc('$', output->file); fputc(c, output->file);
