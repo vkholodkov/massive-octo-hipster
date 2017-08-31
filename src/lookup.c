@@ -247,7 +247,6 @@ lookup_can_store_transitions(boo_lookup_table_t *lookup, boo_int_t base, boo_loo
         to = from + 1;
 
         if(g == NULL) {
-            fprintf(stderr, "fatal error: no more gaps, but there are more symbols\n");
             return BOO_DECLINED;
         }
 
