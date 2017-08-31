@@ -3,6 +3,7 @@
 #define _POOL_
 
 #include <sys/types.h>
+#include <stdio.h>
 
 typedef struct pchunk {
     struct pchunk *next;
@@ -17,6 +18,7 @@ typedef struct plarge_s {
 typedef struct {
     pchunk_t *chunks, *current;
     plarge_t *large;
+    FILE *debug;
 } pool_t;
 
 void pool_init();

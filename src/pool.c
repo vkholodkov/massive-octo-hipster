@@ -1,6 +1,7 @@
 
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <sys/user.h>
 #include <sys/types.h>
 
@@ -13,11 +14,15 @@ static size_t pagesize;
 
 static void *palloc_large(pool_t *pool, size_t size);
 
+inline u_char *align_hi(u_char *ptr, size_t align) {
+    return (u_char*)(((uintptr_t)(ptr + (align - 1))) & ~(align - 1));
+}
+
 void pool_init() {
     pagesize = sysconf(_SC_PAGESIZE);
 }
 
-pool_t *pool_create() {
+pool_t *pool_create(FILE *debug) {
     pool_t *p;
     pchunk_t *c;
     u_char *start;
@@ -28,6 +33,8 @@ pool_t *pool_create() {
         perror("malloc");
         return NULL;
     }
+
+    p->debug = debug != NULL ? debug : stderr;
 
     c = (pchunk_t*)(p + 1);
 
@@ -70,7 +77,7 @@ void pool_destroy(pool_t *pool) {
 void *palloc(pool_t *pool, size_t size) {
     pchunk_t *c;
     void *p;
-    u_char *start;
+    u_char *start, *next;
 
     if(size == 0) {
         fprintf(stderr, "zero size allocation\n");
@@ -84,9 +91,11 @@ void *palloc(pool_t *pool, size_t size) {
     c = pool->chunks;
 
     while(c != NULL) {
-        if((c->allocated + size) <= c->end) {
-            p = c->allocated;
-            c->allocated += size;
+        next = align_hi(c->allocated + size, 16);
+
+        if(next <= c->end) {
+            p = next - size;
+            c->allocated = next;
             return p;
         }
 
@@ -104,7 +113,7 @@ void *palloc(pool_t *pool, size_t size) {
     start = (u_char*)c;
 
     c->next = NULL;
-    c->allocated = start + sizeof(pchunk_t);
+    c->allocated = align_hi(start + sizeof(pchunk_t), 16);
     c->end = start + pagesize;
 
     p = c->allocated;

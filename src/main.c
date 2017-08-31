@@ -52,13 +52,13 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
     boo_grammar_t *grammar;
     boo_output_t *output;
 
-    p = pool_create();
+    p = pool_create(NULL);
 
     if(p == NULL) {
         return BOO_ERROR;
     }
 
-    tmp_pool = pool_create();
+    tmp_pool = pool_create(NULL);
 
     if(tmp_pool == NULL) {
         result = BOO_ERROR;
@@ -118,6 +118,9 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
         result = BOO_ERROR;
         goto cleanup1;
     }
+
+    p->debug = grammar->debug;
+    tmp_pool->debug = grammar->debug;
 
     result = bootstrap_parse_file(grammar, tmp_pool, &_filenames[0]);
 

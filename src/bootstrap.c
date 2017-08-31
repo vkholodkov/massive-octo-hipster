@@ -140,7 +140,7 @@ bootstrap_process_type_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t
 
             if(token->data[0] == '\'') {
                 if(token->len != 3) {
-                    fprintf(stderr, "Invalid token");
+                    fprintf(stderr, "Invalid token\n");
                     return BOO_ERROR;
                 }
 
@@ -362,7 +362,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     fin = fopen((char*)filename->data, "r");
 
     if(fin == NULL) {
-        fprintf(stderr, "cannot open input file %s", filename->data);
+        fprintf(stderr, "cannot open input file %s\n", filename->data);
         return BOO_ERROR;
     }
 
