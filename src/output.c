@@ -380,7 +380,7 @@ output_conflict(boo_output_t *output, boo_grammar_t *grammar, boo_lalr1_item_t *
         }
         else {
             fprintf(stderr, "%s-%s conflict in state %u on ", conflict1_type, conflict2_type, state);
-            boo_puts(output->debug, &lhs_lookup->name);
+            boo_puts(stderr, &lhs_lookup->name);
             fprintf(stderr, ":\n");
         }
     }
