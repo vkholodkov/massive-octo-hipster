@@ -46,6 +46,8 @@ boo_int_t output_symbols(boo_output_t *output, boo_grammar_t *grammar)
 
     fprintf(output->file, "static const char *boo_symbol[] = {\n      ");
 
+    fprintf(output->file, "\"$eof\", ");
+
     for(i = 0 ; i != grammar->num_symbols ; i++) {
         fprintf(output->file, "\"");
         boo_escape_puts(output->file, &grammar->lhs_lookup[i].name);
@@ -249,7 +251,7 @@ boo_int_t output_lhs(boo_output_t *output, boo_grammar_t *grammar)
     rule = boo_list_begin(&grammar->rules);
 
     while(rule != boo_list_end(&grammar->rules)) {
-        fprintf(output->file, "%6d,", boo_code_to_symbol(rule->lhs));
+        fprintf(output->file, "%6d,", boo_code_to_symbol(rule->lhs) + 1);
 
         if(n % output->row_stride == output->row_stride - 1) {
             fprintf(output->file, "\n");
@@ -278,7 +280,7 @@ boo_int_t output_rhs(boo_output_t *output, boo_grammar_t *grammar)
 
     while(rule != boo_list_end(&grammar->rules)) {
         for(i = 0 ; i != rule->length ; i++) {
-            fprintf(output->file, "%6d,", boo_code_to_symbol(rule->rhs[i]));
+            fprintf(output->file, "%6d,", boo_code_to_symbol(rule->rhs[i]) + 1);
 
             if(n % output->row_stride == output->row_stride - 1) {
                 fprintf(output->file, "\n");
