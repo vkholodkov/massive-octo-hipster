@@ -3,8 +3,6 @@
 
 #include "grammar.h"
 
-static const boo_str_t accept_symbol_name = boo_string("$accept");
-
 void grammar_dump_item_set(FILE*, boo_grammar_t*, boo_lalr1_item_set_t*);
 
 /*

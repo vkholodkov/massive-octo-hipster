@@ -320,7 +320,7 @@ lookup_write_base(FILE *file, boo_lookup_table_t *lookup, const char *prefix)
 {
     boo_uint_t i;
 
-    fprintf(file, "static const short %s_base[] = {\n", prefix);
+    fprintf(file, "static const boo_int_t %s_base[] = {\n", prefix);
 
     for(i = 0 ; i != lookup->num_states ; i++) {
         fprintf(file, "%6d,", lookup->states[i].base);
@@ -369,7 +369,7 @@ lookup_write_check(FILE *file, boo_lookup_table_t *lookup, const char *prefix)
     boo_int_t i, *pi;
     boo_uint_t n = 0;
 
-    fprintf(file, "static const char %s_check[] = {\n", prefix);
+    fprintf(file, "static const boo_int_t %s_check[] = {\n", prefix);
 
     pi = (boo_int_t*)lookup->next;
 
