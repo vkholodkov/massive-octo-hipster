@@ -22,6 +22,8 @@ u_char *boo_strcpy(u_char*,boo_str_t*);
 int boo_const_strequ(boo_str_t*, const char*);
 
 void boo_puts(FILE*,boo_str_t*);
+void boo_puts_upper(FILE*,boo_str_t*);
+void boo_puts_lower(FILE*,boo_str_t*);
 void boo_escape_puts(FILE*,boo_str_t*);
 
 #endif //_STRING_

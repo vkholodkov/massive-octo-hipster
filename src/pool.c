@@ -14,7 +14,7 @@ static size_t pagesize;
 
 static void *palloc_large(pool_t *pool, size_t size);
 
-inline u_char *align_hi(u_char *ptr, size_t align) {
+static u_char *align_hi(u_char *ptr, size_t align) {
     return (u_char*)(((uintptr_t)(ptr + (align - 1))) & ~(align - 1));
 }
 

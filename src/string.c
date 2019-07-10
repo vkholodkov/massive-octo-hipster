@@ -1,4 +1,6 @@
 
+#include <ctype.h>
+
 #include "string.h"
 
 u_char *boo_strcpy(u_char *p,boo_str_t *s) {
@@ -27,17 +29,30 @@ int boo_const_strequ(boo_str_t *s1, const char *s2) {
 
 void boo_puts(FILE *out, boo_str_t *s) {
     fwrite(s->data, s->len, 1, out);
-#if 0
+}
+
+void boo_puts_upper(FILE *out, boo_str_t *s) {
     u_char *p, *q;
 
     p = s->data;
     q = p + s->len;
 
     while(p != q) {
-        fputc(*p, out);
+        fputc(toupper(*p), out);
         p++;
     }
-#endif
+}
+
+void boo_puts_lower(FILE *out, boo_str_t *s) {
+    u_char *p, *q;
+
+    p = s->data;
+    q = p + s->len;
+
+    while(p != q) {
+        fputc(tolower(*p), out);
+        p++;
+    }
 }
 
 void boo_escape_puts(FILE *out, boo_str_t *s)

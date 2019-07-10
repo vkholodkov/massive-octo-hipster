@@ -61,6 +61,7 @@ typedef struct {
     boo_list_t              reverse_item_sets;
     boo_list_t              reductions;
     boo_union_t             *union_code;
+    boo_str_t               *prefix;
     boo_str_t               *context;
 
     boo_uint_t              root_symbol;

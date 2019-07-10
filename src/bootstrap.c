@@ -244,7 +244,7 @@ bootstrap_process_context_directive(FILE *fin, boo_grammar_t *grammar, boo_str_t
         rc = fscanf(fin, "%128s", token_buffer);
 
         if(rc == EOF || rc != 1) {
-            fprintf(stderr, "%%type directive broken at the end of file\n");
+            fprintf(stderr, "%%context directive broken at the end of file\n");
             return BOO_ERROR;
         }
 
@@ -280,6 +280,52 @@ bootstrap_process_context_directive(FILE *fin, boo_grammar_t *grammar, boo_str_t
 }
 
 static boo_int_t
+bootstrap_process_prefix_directive(FILE *fin, boo_grammar_t *grammar, boo_str_t *token)
+{
+    boo_int_t rc;
+    char token_buffer[128];
+
+    while(!feof(fin)) {
+
+        rc = fscanf(fin, "%128s", token_buffer);
+
+        if(rc == EOF || rc != 1) {
+            fprintf(stderr, "%%prefix directive broken at the end of file\n");
+            return BOO_ERROR;
+        }
+
+        token->data = (u_char*)token_buffer;
+        token->len = strlen(token_buffer);
+
+        if(token->len == 1 && token->data[0] == ';') {
+            return BOO_OK;
+        }
+        else {
+            if(grammar->prefix != NULL) {
+                fprintf(stderr, "too many values in %%prefix directive\n");
+                return BOO_ERROR;
+            }
+
+            grammar->prefix = pcalloc(grammar->pool, sizeof(boo_str_t));
+
+            if(grammar->prefix == NULL) {
+                return BOO_ERROR;
+            }
+        
+            grammar->prefix->data = pstrdup(grammar->pool, token->data, token->len);
+
+            if(grammar->prefix->data == NULL) {
+                return BOO_ERROR;
+            }
+
+            grammar->prefix->len = token->len;
+        }
+    }
+        
+    return BOO_ERROR;
+}
+
+static boo_int_t
 bootstrap_process_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token)
 {
     if(token->len > 4 && token->data[0] == 't' && token->data[1] == 'y' &&
@@ -297,6 +343,12 @@ bootstrap_process_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs
         token->data[5] == 'x' && token->data[6] == 't')
     {
         return bootstrap_process_context_directive(fin, grammar, token);
+    }
+    else if(token->len == 6 && token->data[0] == 'p' && token->data[1] == 'r' &&
+        token->data[2] == 'e' && token->data[3] == 'f' && token->data[4] == 'i' &&
+        token->data[5] == 'x')
+    {
+        return bootstrap_process_prefix_directive(fin, grammar, token);
     }
 
     return BOO_ERROR;

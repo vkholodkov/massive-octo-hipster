@@ -316,11 +316,13 @@ lookup_book_space(boo_lookup_table_t *lookup, boo_int_t base, boo_lookup_state_t
 }
 
 static boo_int_t
-lookup_write_base(FILE *file, boo_lookup_table_t *lookup, const char *prefix)
+lookup_write_base(FILE *file, boo_lookup_table_t *lookup, boo_str_t *prefix)
 {
     boo_uint_t i;
 
-    fprintf(file, "static const boo_int_t %s_base[] = {\n", prefix);
+    fprintf(file, "static const int ");
+    boo_puts_lower(file, prefix);
+    fprintf(file, "_base[] = {\n");
 
     for(i = 0 ; i != lookup->num_states ; i++) {
         fprintf(file, "%6d,", lookup->states[i].base);
@@ -338,12 +340,14 @@ lookup_write_base(FILE *file, boo_lookup_table_t *lookup, const char *prefix)
 }
 
 static boo_int_t
-lookup_write_next(FILE *file, boo_lookup_table_t *lookup, const char *prefix)
+lookup_write_next(FILE *file, boo_lookup_table_t *lookup, boo_str_t *prefix)
 {
     boo_int_t i, *pi;
     boo_uint_t n = 0;
 
-    fprintf(file, "static const boo_int_t %s_next[] = {\n", prefix);
+    fprintf(file, "static const int ");
+    boo_puts_lower(file, prefix);
+    fprintf(file, "_next[] = {\n");
 
     pi = (boo_int_t*)lookup->next;
 
@@ -364,12 +368,14 @@ lookup_write_next(FILE *file, boo_lookup_table_t *lookup, const char *prefix)
 }
 
 static boo_int_t
-lookup_write_check(FILE *file, boo_lookup_table_t *lookup, const char *prefix)
+lookup_write_check(FILE *file, boo_lookup_table_t *lookup, boo_str_t *prefix)
 {
     boo_int_t i, *pi;
     boo_uint_t n = 0;
 
-    fprintf(file, "static const boo_int_t %s_check[] = {\n", prefix);
+    fprintf(file, "static const int ");
+    boo_puts_lower(file, prefix);
+    fprintf(file, "_check[] = {\n");
 
     pi = (boo_int_t*)lookup->next;
 
@@ -389,7 +395,7 @@ lookup_write_check(FILE *file, boo_lookup_table_t *lookup, const char *prefix)
     return BOO_OK;
 }
 
-boo_int_t lookup_write(FILE *file, boo_lookup_table_t *lookup, const char *prefix)
+boo_int_t lookup_write(FILE *file, boo_lookup_table_t *lookup, boo_str_t *prefix)
 {
     boo_int_t rc = lookup_write_base(file, lookup, prefix);
 

@@ -6,6 +6,7 @@
 
 #include "boo.h"
 #include "pool.h"
+#include "string.h"
 
 typedef struct gap {
     boo_uint_t from, to;
@@ -34,7 +35,7 @@ typedef struct {
 
 boo_lookup_table_t *lookup_create(pool_t*, boo_uint_t);
 boo_int_t lookup_index(boo_lookup_table_t*);
-boo_int_t lookup_write(FILE*, boo_lookup_table_t*, const char*);
+boo_int_t lookup_write(FILE*, boo_lookup_table_t*, boo_str_t*);
 boo_int_t lookup_add_transition(boo_lookup_table_t*, boo_uint_t, boo_uint_t, boo_int_t);
 boo_int_t lookup_get_transition(boo_lookup_table_t*, boo_uint_t, boo_uint_t);
 

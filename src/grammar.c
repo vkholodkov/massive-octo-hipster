@@ -44,6 +44,7 @@ boo_grammar_t *grammar_create(pool_t *p)
 }
 
 static boo_str_t boo_context_str = boo_string("void");
+static boo_str_t boo_prefix_str = boo_string("moh");
 
 boo_int_t grammar_wrapup(boo_grammar_t *grammar) {
     boo_int_t i;
@@ -60,6 +61,10 @@ boo_int_t grammar_wrapup(boo_grammar_t *grammar) {
 
     if(grammar->context == NULL) {
         grammar->context = &boo_context_str;
+    }
+
+    if(grammar->prefix == NULL) {
+        grammar->prefix = &boo_prefix_str;
     }
 
     memset(grammar->transition_lookup, 0,

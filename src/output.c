@@ -25,11 +25,15 @@ boo_int_t output_codes(boo_output_t *output, boo_grammar_t *grammar)
 {
     boo_uint_t i;
 
-    fprintf(output->file, "#define BOO_EOF %d\n", UCHAR_MAX + 1);
+    fprintf(output->file, "#define ");
+    boo_puts_upper(output->file, grammar->prefix);
+    fprintf(output->file, "_EOF %d\n", UCHAR_MAX + 1);
 
     for(i = 0 ; i != grammar->num_symbols ; i++) {
         if(grammar->lhs_lookup[i].token && !grammar->lhs_lookup[i].literal) {
-            fprintf(output->file, "#define BOO_");
+            fprintf(output->file, "#define ");
+            boo_puts_upper(output->file, grammar->prefix);
+            fprintf(output->file, "_");
             boo_puts(output->file, &grammar->lhs_lookup[i].name);
             fprintf(output->file, " %d\n", grammar->lhs_lookup[i].code);
         }
@@ -44,7 +48,9 @@ boo_int_t output_symbols(boo_output_t *output, boo_grammar_t *grammar)
 {
     boo_uint_t i;
 
-    fprintf(output->file, "static const char *boo_symbol_table[] = {\n      ");
+    fprintf(output->file, "static const char *");
+    boo_puts_lower(output->file, grammar->prefix);
+    fprintf(output->file, "_symbol_table[] = {\n      ");
 
     fprintf(output->file, "\"$eof\",\n      ");
 
@@ -62,20 +68,52 @@ boo_int_t output_symbols(boo_output_t *output, boo_grammar_t *grammar)
 
     fprintf(output->file, "};\n\n");
 
-    fprintf(output->file, "static const char **boo_symbol = &boo_symbol_table[1];\n\n");
+    fprintf(output->file, "static const char **");
+    boo_puts_lower(output->file, grammar->prefix);
+    fprintf(output->file, "_symbol = &");
+    boo_puts_lower(output->file, grammar->prefix);
+    fprintf(output->file, "_symbol_table[1];\n\n");
 
     return BOO_OK;
 }
 
 boo_int_t output_lookup(boo_output_t *output, boo_grammar_t *grammar)
 {
-    boo_int_t rc = lookup_write(output->file, output->term, "boo_t");
+    boo_str_t prefix;
+    u_char *p;
+
+    prefix.len = grammar->prefix->len + sizeof("_t") - 1;
+    prefix.data = palloc(output->pool, prefix.len);
+
+    if(prefix.data == NULL) {
+        return BOO_ERROR;
+    }
+
+    p = boo_strcpy(prefix.data, grammar->prefix);
+
+    *p++ = '_';
+    *p++ = 't';
+
+    boo_int_t rc = lookup_write(output->file, output->term, &prefix);
 
     if(rc != BOO_OK) {
         return rc;
     }
 
-    return lookup_write(output->file, output->nterm, "boo_nt");
+    prefix.len = grammar->prefix->len + sizeof("_nt") - 1;
+    prefix.data = palloc(output->pool, prefix.len);
+
+    if(prefix.data == NULL) {
+        return BOO_ERROR;
+    }
+
+    p = boo_strcpy(prefix.data, grammar->prefix);
+
+    *p++ = '_';
+    *p++ = 'n';
+    *p++ = 't';
+
+    return lookup_write(output->file, output->nterm, &prefix);
 }
 
 boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const char *filename)
@@ -84,7 +122,9 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
     boo_uint_t i, n = 0;
     boo_reduction_t *reduction;
 
-    fprintf(output->file, "static const boo_uint_t boo_action[] = {\n");
+    fprintf(output->file, "static const unsigned int ");
+    boo_puts_lower(output->file, grammar->prefix);
+    fprintf(output->file, "_action[] = {\n");
 
     reduction = boo_list_begin(&grammar->reductions);
 
@@ -128,7 +168,7 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
     if(grammar->union_code != NULL) {
         fprintf(output->file,
             "\ntypedef struct {\n" \
-            "    boo_uint_t state;\n" \
+            "    unsigned int state;\n" \
             "    union ");
 
         fseek(fin, grammar->union_code->start, SEEK_SET);
@@ -149,21 +189,29 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
 
         fprintf(output->file,
             " val;\n" \
-            "} boo_stack_elm_t;\n\n" \
+            "} "
         );
+        boo_puts_lower(output->file, grammar->prefix);
+        fprintf(output->file, "_stack_elm_t;\n\n");
     }
     else {
         fprintf(output->file,
             "\ntypedef struct {\n" \
-            "    boo_uint_t state;\n" \
+            "    unsigned int state;\n" \
             "    void *val;\n" \
-            "} boo_stack_elm_t;\n\n" \
+            "} "
         );
+        boo_puts_lower(output->file, grammar->prefix);
+        fprintf(output->file, "_stack_elm_t;\n\n");
     }
 
-    fprintf(output->file, "inline void boo_action(boo_int_t action, ");
+    fprintf(output->file, "inline void ");
+    boo_puts_lower(output->file, grammar->prefix);
+    fprintf(output->file, "_action(unsigned int action, ");
     boo_puts(output->file, grammar->context);
-    fprintf(output->file, " *context, boo_stack_elm_t *top) {\n");
+    fprintf(output->file, " *context, ");
+    boo_puts_lower(output->file, grammar->prefix);
+    fprintf(output->file, "_stack_elm_t *top) {\n");
     fprintf(output->file, "    switch(action) {\n");
 
     rule = boo_list_begin(&grammar->rules);
@@ -248,7 +296,9 @@ boo_int_t output_lhs(boo_output_t *output, boo_grammar_t *grammar)
     boo_uint_t n = 0;
     boo_rule_t *rule;
 
-    fprintf(output->file, "static const boo_uint_t boo_lhs[] = {\n");
+    fprintf(output->file, "static const unsigned int ");
+    boo_puts_lower(output->file, grammar->prefix);
+    fprintf(output->file, "_lhs[] = {\n");
 
     rule = boo_list_begin(&grammar->rules);
 
@@ -276,7 +326,9 @@ boo_int_t output_rhs(boo_output_t *output, boo_grammar_t *grammar)
     boo_uint_t i, n = 0;
     boo_rule_t *rule;
 
-    fprintf(output->file, "static const boo_int_t boo_rhs[] = {\n");
+    fprintf(output->file, "static const unsigned int ");
+    boo_puts_lower(output->file, grammar->prefix);
+    fprintf(output->file, "_rhs[] = {\n");
 
     rule = boo_list_begin(&grammar->rules);
 
@@ -306,7 +358,9 @@ boo_int_t output_rules(boo_output_t *output, boo_grammar_t *grammar)
     boo_uint_t n = 0, pos = 0;
     boo_rule_t *rule;
 
-    fprintf(output->file, "static const boo_uint_t boo_rule[] = {\n");
+    fprintf(output->file, "static const unsigned int ");
+    boo_puts_lower(output->file, grammar->prefix);
+    fprintf(output->file, "_rule[] = {\n");
 
     rule = boo_list_begin(&grammar->rules);
 
