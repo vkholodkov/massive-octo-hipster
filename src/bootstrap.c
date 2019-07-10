@@ -500,6 +500,9 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     rule->rhs = palloc(grammar->pool, rule->length * sizeof(boo_uint_t));
                     rule->action = action;
 
+                    // Consume action if there is any
+                    action = NULL;
+
                     if(rule->rhs == NULL) {
                         fprintf(stderr, "insufficient memory\n");
                         goto cleanup;
