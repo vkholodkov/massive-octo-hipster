@@ -326,7 +326,7 @@ boo_int_t output_rhs(boo_output_t *output, boo_grammar_t *grammar)
     boo_uint_t i, n = 0;
     boo_rule_t *rule;
 
-    fprintf(output->file, "static const unsigned int ");
+    fprintf(output->file, "static const int ");
     boo_puts_lower(output->file, grammar->prefix);
     fprintf(output->file, "_rhs[] = {\n");
 
