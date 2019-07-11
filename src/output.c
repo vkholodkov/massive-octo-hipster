@@ -156,6 +156,7 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
     boo_action_t *action;
     FILE *fin;
     int c;
+    unsigned ref;
     boo_uint_t pos, escape;
 
     fin = fopen(filename, "r");
@@ -228,7 +229,7 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
 
         fseek(fin, action->start, SEEK_SET);
 
-        escape = 0;
+        escape = 0; ref = 0;
         pos = action->start;
 
         while(pos != action->end) {
@@ -249,22 +250,39 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
 
                     fprintf(output->file, "top[%d].val.", 1 - action->rule_length);
                     boo_puts(output->file, &grammar->lhs_lookup[boo_code_to_symbol(rule->lhs)].type->name);
+                    escape = 0;
                 }
-                else if(c >= '1' && c <= '9') {
-                    if(grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[c - '1'])].type == NULL) {
-                        fprintf(stderr, "symbol ");
-                        boo_puts(stderr, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[c - '1'])].name);
-                        fprintf(stderr, " is used in an action but has no type assigned\n");
-                        return BOO_ERROR;
-                    }
-
-                    fprintf(output->file, "top[%d].val.", 1 - action->rule_length + c - '1');
-                    boo_puts(output->file, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[c - '1'])].type->name);
+                else if(c >= '0' && c <= '9') {
+                    ref = ref * 10 + (c - '0');
                 }
                 else {
-                    fputc('$', output->file); fputc(c, output->file);
+                    if(ref != 0) {
+
+                        if(ref > rule->length) {
+                            fprintf(stderr, "Reference points to the item %u while the rule has only %u items\n", ref, rule->length);
+                            return BOO_ERROR;
+                        }
+
+                        if(grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[ref - 1])].type == NULL) {
+                            fprintf(stderr, "symbol ");
+                            boo_puts(stderr, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[ref - 1])].name);
+                            fprintf(stderr, " is used in an action but has no type assigned\n");
+                            return BOO_ERROR;
+                        }
+
+                        fprintf(output->file, "top[%d].val.", 1 - action->rule_length + ref - 1);
+                        boo_puts(output->file, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[ref - 1])].type->name);
+
+                        ref = 0;
+
+                        fputc(c, output->file);
+                    }
+                    else {
+                        fputc('$', output->file); fputc(c, output->file);
+                    }
+
+                    escape = 0;
                 }
-                escape = 0;
             }
             else {
                 if(c == '$') {
