@@ -79,7 +79,7 @@ boo_int_t grammar_wrapup(boo_grammar_t *grammar) {
             symbol = symtab_resolve(grammar->symtab, &grammar->lhs_lookup[i].name);
 
             if(symbol != NULL && !boo_is_token(symbol->value)) {
-                fprintf(stderr, "non-terminal %s (%u) is used in right-hand side but has no rules\n",
+                fprintf(stderr, "non-terminal %s (%u) is used in the right-hand side but has no rules\n",
                     grammar->lhs_lookup[i].name.data, symbol->line);
                 return BOO_ERROR;
             }
@@ -241,7 +241,7 @@ grammar_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
     } while(!boo_list_empty(&add_queue));
 
     if(seen_nonterminal_in_core && !seen_token) {
-        fprintf(stderr, "cannot close an item set: grammar is incomplete\n");
+        fprintf(stderr, "cannot close an item set: the grammar is incomplete\n");
         return BOO_ERROR;
     }
 
@@ -268,7 +268,7 @@ grammar_close_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
         }
 
 #if 0
-        fprintf(grammar->debug, "\nClosed item set:\n--------------------------\n");
+        fprintf(grammar->debug, "\nClosed the item set:\n--------------------------\n");
         grammar_dump_item_set(grammar->debug, grammar, item_set);
 #endif
 
@@ -429,7 +429,7 @@ grammar_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set,
 #if 0
             if(item->pos + 1 != item->length && boo_token_get(item->rhs[item->pos + 1]) == BOO_EOF)
             {
-                printf("skipping item with $eof after marker\n");
+                printf("skipping an item with $eof after the marker\n");
                 item = boo_list_next(item);
                 continue;
             }
@@ -706,7 +706,7 @@ boo_int_t grammar_generate_lr_item_sets(boo_grammar_t *grammar, boo_list_t *dest
     root_rule = grammar->lhs_lookup[boo_code_to_symbol(grammar->root_symbol)].rules;
 
     if(root_rule == NULL) {
-        fprintf(stderr, "cannot resolve root rule\n");
+        fprintf(stderr, "cannot resolve the root rule\n");
         return BOO_ERROR;
     }
 

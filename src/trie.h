@@ -21,9 +21,9 @@ typedef struct {
     bloom_filter_t                   input_filter;
 
     /*
-     * Linked lists of transitions from and to this state
+     * Linked lists of transitions from this node
      */
-    struct boo_trie_transition       *to;
+    struct boo_trie_transition       *from;
     void                             *leaf;
 } boo_trie_node_t;
 

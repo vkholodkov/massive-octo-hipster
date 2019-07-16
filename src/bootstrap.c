@@ -517,13 +517,12 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                         goto cleanup;
                     }
 
-                    fprintf(grammar->debug, "action start %u ", pos);
-
+                    /*
+                     * Determine action start and end positions in the source file
+                     */
                     action->start = pos;
 
                     pos = ftell(fin);
-
-                    fprintf(grammar->debug, "action end %u\n", pos);
 
                     action->end = pos;
                 }

@@ -36,7 +36,7 @@ boo_trie_add_transition(boo_trie_t *tree, boo_trie_node_t *n, boo_uint_t c) {
     }
 
     nn->input_filter = 0;
-    nn->to = NULL;
+    nn->from = NULL;
     nn->leaf = NULL;
 
     nt = pcalloc(tree->pool, sizeof(boo_trie_transition_t));
@@ -51,9 +51,9 @@ boo_trie_add_transition(boo_trie_t *tree, boo_trie_node_t *n, boo_uint_t c) {
     nt->from = n;
     nt->to = nn;
 
-    if(n->to != NULL) {
+    if(n->from != NULL) {
         after = NULL;
-        before = n->to;
+        before = n->from;
 
         while(before != NULL) {
             if(before->input > nt->input) {
@@ -65,7 +65,7 @@ boo_trie_add_transition(boo_trie_t *tree, boo_trie_node_t *n, boo_uint_t c) {
 
         if(after == NULL) {
             nt->next = before;
-            n->to = nt;
+            n->from = nt;
         }
         else {
             nt->next = before;
@@ -74,7 +74,7 @@ boo_trie_add_transition(boo_trie_t *tree, boo_trie_node_t *n, boo_uint_t c) {
     }
     else {
         nt->next = NULL;
-        n->to = nt;
+        n->from = nt;
     }
 
     return nn;
@@ -92,7 +92,7 @@ boo_trie_add_sequence(boo_trie_t *tree, boo_trie_node_t *node, boo_uint_t *p, bo
         a = bloom_hash(c);
 
         if((node->input_filter & a) == a) {
-            t = node->to;
+            t = node->from;
 
             while(t != NULL && t->input != c) {
                 t = t->next;
@@ -120,7 +120,7 @@ boo_trie_next(boo_trie_t *tree, boo_trie_node_t *node, boo_uint_t c) {
     a = bloom_hash(c);
 
     if((node->input_filter & a) == a) {
-        t = node->to;
+        t = node->from;
 
         while(t != NULL && t->input != c) {
             t = t->next;

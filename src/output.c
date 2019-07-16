@@ -259,12 +259,12 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
                     if(ref != 0) {
 
                         if(ref > rule->length) {
-                            fprintf(stderr, "Reference points to the item %u while the rule has only %u items\n", ref, rule->length);
+                            fprintf(stderr, "A reference points to the item %u while the rule has only %u items\n", ref, rule->length);
                             return BOO_ERROR;
                         }
 
                         if(grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[ref - 1])].type == NULL) {
-                            fprintf(stderr, "symbol ");
+                            fprintf(stderr, "The symbol ");
                             boo_puts(stderr, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[ref - 1])].name);
                             fprintf(stderr, " is used in an action but has no type assigned\n");
                             return BOO_ERROR;
@@ -492,6 +492,9 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
     boo_trie_transition_t *tr;
     boo_reduction_t *reduction;
 
+    /*
+     * Look up the item in the lookahead set
+     */
     t = grammar->lookahead_set;
 
     n = boo_trie_next(t, t->root, item->lhs);
@@ -515,7 +518,10 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
         p++;
     }
 
-    tr = n->to;
+    /*
+     * Iterate over all transitions from this node
+     */
+    tr = n->from;
 
     while(tr != NULL) {
         if(tr->to->leaf != NULL) {
@@ -553,6 +559,11 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
                 fprintf(output->debug, "adding lookahead $eof to state %d accept\n", state);
             }
 
+            /*
+             * Check if transition to be added is conflicting
+             * with an existing transition and if so,
+             * output the conflict
+             */
             rc = lookup_get_transition(output->term, state, symbol);
 
             if(rc != BOO_DECLINED && rc != -reduction->rule_n) {
@@ -577,13 +588,129 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
     return BOO_OK;
 }
 
-boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
+static boo_int_t
+output_add_item(boo_output_t *output, boo_grammar_t *grammar,
+  boo_lalr1_item_set_t *item_set, boo_lalr1_item_t *item)
 {
     boo_int_t rc;
     boo_uint_t symbol;
-    boo_lalr1_item_set_t *item_set;
-    boo_lalr1_item_t *item;
     boo_lhs_lookup_t *lhs_lookup;
+
+    if(item->transition != NULL)
+    {
+        if(boo_is_token(item->rhs[item->pos])) {
+
+            /*
+             * The marker is in front of a terminal
+             */
+            symbol = boo_code_to_symbol(item->rhs[item->pos]);
+            lhs_lookup = grammar->lhs_lookup + symbol;
+
+            if(lhs_lookup->literal) {
+                symbol = lhs_lookup->name.data[0];
+
+                fprintf(output->debug, "adding transition '%c' to state %d -> %d\n",
+                    symbol, item_set->state_n,
+                    item->transition->item_set->state_n);
+            }
+            else {
+                symbol = lhs_lookup->code;
+
+                fprintf(output->debug, "adding transition ");
+                boo_puts(output->debug, &lhs_lookup->name);
+                fprintf(output->debug, " (%d) to state %d -> %d\n",
+                    symbol, item_set->state_n,
+                    item->transition->item_set->state_n);
+            }
+
+            /*
+             * Check if transition to be added is conflicting
+             * with an existing transition and if so,
+             * output the conflict
+             */
+            rc = lookup_get_transition(output->term, item_set->state_n, symbol);
+
+            if(rc != BOO_DECLINED && rc != item->transition->item_set->state_n) {
+                output_conflict(output, grammar, item, item_set->state_n, item->rhs[item->pos],
+                    item->transition->item_set->state_n, rc);
+            }
+            else {
+                rc = lookup_add_transition(output->term, item_set->state_n, symbol,
+                    item->transition->item_set->state_n);
+
+                if(rc != BOO_OK) {
+                    return rc;
+                }
+            }
+        }
+        else /*if(item->core)*/ {
+
+            /*
+             * The marker is in front of a non-terminal
+             */
+            rc = lookup_add_transition(output->nterm, item_set->state_n,
+                boo_code_to_symbol(item->rhs[item->pos]),
+                item->transition->item_set->state_n);
+
+            if(rc != BOO_OK) {
+                return rc;
+            }
+        }
+    }
+    else if(item->pos == item->length) {
+
+        /*
+         * The marker is at the end of a rule,
+         * add lookahead data
+         */
+        rc = output_add_lookahead(output, grammar, item_set->state_n, item);
+
+        if(rc != BOO_OK) {
+            return rc;
+        }
+    }
+    else if(boo_token_get(item->rhs[item->pos]) == BOO_EOF) {
+
+        /*
+         * The marker is in front of an $eof symbol
+         */
+        rc = lookup_add_transition(output->term, item_set->state_n,
+            256, 0);
+
+        if(rc != BOO_OK) {
+            return rc;
+        }
+    }
+
+    return BOO_OK;
+}
+
+static boo_int_t
+output_add_item_set(boo_output_t *output, boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
+{
+    boo_int_t rc;
+    boo_lalr1_item_t *item;
+
+    item = boo_list_begin(&item_set->items);
+
+    while(item != boo_list_end(&item_set->items)) {
+
+        rc = output_add_item(output, grammar, item_set, item);
+
+        if(rc != BOO_OK) {
+            return rc;
+        }
+        
+        item = boo_list_next(item);
+    }
+
+    return BOO_OK;
+}
+
+boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
+{
+    boo_int_t rc;
+    boo_lalr1_item_set_t *item_set;
     boo_uint_t i, code;
 
     code = UCHAR_MAX + 2;
@@ -617,74 +744,10 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
 
     while(item_set != boo_list_end(&grammar->item_sets)) {
 
-        item = boo_list_begin(&item_set->items);
+        rc = output_add_item_set(output, grammar, item_set);
 
-        while(item != boo_list_end(&item_set->items)) {
-            if(item->transition != NULL)
-            {
-                if(boo_is_token(item->rhs[item->pos])) {
-                    symbol = boo_code_to_symbol(item->rhs[item->pos]);
-                    lhs_lookup = grammar->lhs_lookup + symbol;
-
-                    if(lhs_lookup->literal) {
-                        symbol = lhs_lookup->name.data[0];
-
-                        fprintf(output->debug, "adding transition '%c' to state %d -> %d\n",
-                            symbol, item_set->state_n,
-                            item->transition->item_set->state_n);
-                    }
-                    else {
-                        symbol = lhs_lookup->code;
-
-                        fprintf(output->debug, "adding transition ");
-                        boo_puts(output->debug, &lhs_lookup->name);
-                        fprintf(output->debug, " (%d) to state %d -> %d\n",
-                            symbol, item_set->state_n,
-                            item->transition->item_set->state_n);
-                    }
-
-                    rc = lookup_get_transition(output->term, item_set->state_n, symbol);
-
-                    if(rc != BOO_DECLINED && rc != item->transition->item_set->state_n) {
-                        output_conflict(output, grammar, item, item_set->state_n, item->rhs[item->pos],
-                            item->transition->item_set->state_n, rc);
-                    }
-                    else {
-                        rc = lookup_add_transition(output->term, item_set->state_n, symbol,
-                            item->transition->item_set->state_n);
-
-                        if(rc != BOO_OK) {
-                            return rc;
-                        }
-                    }
-                }
-                else /*if(item->core)*/ {
-                    rc = lookup_add_transition(output->nterm, item_set->state_n,
-                        boo_code_to_symbol(item->rhs[item->pos]),
-                        item->transition->item_set->state_n);
-
-                    if(rc != BOO_OK) {
-                        return rc;
-                    }
-                }
-            }
-            else if(item->pos == item->length) {
-                rc = output_add_lookahead(output, grammar, item_set->state_n, item);
-
-                if(rc != BOO_OK) {
-                    return rc;
-                }
-            }
-            else if(boo_token_get(item->rhs[item->pos]) == BOO_EOF) {
-                rc = lookup_add_transition(output->term, item_set->state_n,
-                    256, 0);
-
-                if(rc != BOO_OK) {
-                    return rc;
-                }
-            }
-            
-            item = boo_list_next(item);
+        if(rc != BOO_OK) {
+            return rc;
         }
 
         item_set = boo_list_next(item_set);

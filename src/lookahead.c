@@ -582,7 +582,7 @@ lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sy
 #else
         if(reduction->rule_n != item->rule_n) {
 #endif
-            fprintf(stderr, "Multiple definitions of rule in the grammar:\n");
+            fprintf(stderr, "Multiple definitions of the rule in the grammar:\n");
             grammar_dump_rule_from_item(stderr, grammar, item);
         }
         return BOO_OK;
@@ -642,13 +642,13 @@ lookahead_add_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
                 symbol = boo_token_get(item1->rhs[item1->pos]);
 
                 /*
-                 * Lookup this item in the first set
+                 * Look this item up in the first set
                  */
                 if(symbol != BOO_EOF) {
                     rc = lookahead_lookup_state(grammar, item1, &state);
 
                     if(rc != BOO_OK) {
-                        fprintf(stdout, "Cannot resolve state of item ");
+                        fprintf(stdout, "Cannot resolve the state of the item ");
                         grammar_dump_item(stdout, grammar, item1);
                         return BOO_ERROR;
                     }

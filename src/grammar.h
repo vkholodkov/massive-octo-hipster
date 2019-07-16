@@ -145,7 +145,7 @@ typedef struct boo_lalr1_item {
     boo_uint_t              remove;
 
     /*
-     * What is the symbol in front of the marker of the original rule this item is derived from
+     * The symbol in front of the marker of the original rule this item is derived from
      */
     boo_uint_t              original_symbol;
     struct boo_lalr1_item   *instantiated_from;
