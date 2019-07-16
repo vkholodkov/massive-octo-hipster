@@ -23,8 +23,6 @@ lookahead_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
     boo_lalr1_item_t *item, *new_item;
     boo_rule_t *rule;
     boo_list_t add_queue;
-    u_char seen_token = 0;
-    u_char seen_nonterminal_in_core = 0;
     boo_uint_t i, num_nonterminals;
 
     boo_list_init(&add_queue);
@@ -35,9 +33,6 @@ lookahead_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
         item = boo_list_begin(&item_set->items);
 
         while(item != boo_list_end(&item_set->items)) {
-            if(item->core && item->pos != item->length && !boo_is_token(item->rhs[item->pos - 1])) {
-                seen_nonterminal_in_core = 1;
-            }
 
             if(!item->closed) {
                 /*
@@ -64,10 +59,6 @@ lookahead_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
                             }
 
                             lookahead_item_from_rule(new_item, rule);
-
-                            if(rule->length != 0 && boo_is_token(rule->rhs[0])) {
-                                seen_token = 1;
-                            }
 
                             num_nonterminals = 0;
 
@@ -103,9 +94,6 @@ lookahead_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
          * Do until there is nothing more to close
          */
     } while(!boo_list_empty(&add_queue));
-
-    if(seen_nonterminal_in_core && !seen_token) {
-    }
 
     return BOO_OK;
 }
@@ -604,9 +592,9 @@ lookahead_add_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
 
                 /*
                  * Scan over items of the item set and add those
-                 * that have the marker at the end to the dictionary
-                 * and those left-hand-side matches the symbol in the front of the marker
-                 * of the item above
+                 * that have the marker at the end and whose
+                 * left-hand-side matches the symbol in front of the marker
+                 * of the item being processed to the dictionary
                  */
                 while(item2 != boo_list_end(&item_set->items)) {
                     if(item2->pos == item2->length && item2->original_symbol == item1->rhs[item1->pos - 1]) {

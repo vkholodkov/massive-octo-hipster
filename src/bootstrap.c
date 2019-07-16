@@ -355,7 +355,7 @@ bootstrap_process_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs
 }
 
 static boo_int_t
-bootstrap_add_accept_symbol(boo_vector_t *rhs_vector)
+bootstrap_add_eof_symbol(boo_vector_t *rhs_vector)
 {
     boo_uint_t *rhs;
 
@@ -382,9 +382,10 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     boo_int_t has_lhs;
     boo_vector_t *rhs_vector;
     boo_vector_t *lhs_lookup;
+    boo_vector_t *action_vector;
     symbol_t *symbol;
     boo_rule_t *rule;
-    boo_action_t *action;
+    boo_action_t *action, **paction;
     boo_uint_t *rhs;
     boo_lhs_lookup_t *lookup;
     boo_uint_t flags, rule_no, pos, num_brakets, i;
@@ -407,6 +408,13 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
     lhs_lookup = vector_create(pool, sizeof(boo_lhs_lookup_t), (UCHAR_MAX + 1) * 2);
 
     if(lhs_lookup == NULL) {
+        fprintf(stderr, "insufficient memory\n");
+        return BOO_ERROR;
+    }
+
+    action_vector = vector_create(pool, sizeof(boo_action_t*), 8);
+
+    if(action_vector == NULL) {
         fprintf(stderr, "insufficient memory\n");
         return BOO_ERROR;
     }
@@ -476,6 +484,17 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                 break;
             case s_rhs:
                 if(token.len != 0 && token.data[0] == '{') {
+
+                    if(action != NULL) {
+                        fprintf(stderr, "Duplicate action at position %d of a rule\n", rhs_vector->nelements);
+                        goto cleanup;
+                    }
+
+                    if(rhs_vector->nelements == 0) {
+                        fprintf(stderr, "Cannot instantiate an action at position 0 of a rule\n");
+                        goto cleanup;
+                    }
+
                     pos = ftell(fin) - token.len;
 
                     num_brakets = 0;
@@ -525,17 +544,49 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     pos = ftell(fin);
 
                     action->end = pos;
+
+                    /*
+                     * Set the action's postion within the rule
+                     */
+                    action->pos = action_vector->nelements;
                 }
                 else if(token.len == 1 && (token.data[0] == '|' || token.data[0] == ';')) {
+
                     if(lhs == grammar->root_symbol) {
-                        if(bootstrap_add_accept_symbol(rhs_vector) != BOO_OK)
+                        if(bootstrap_add_eof_symbol(rhs_vector) != BOO_OK)
                         {
                             goto cleanup;
                         }
+
+                        paction = vector_append(action_vector);
+
+                        if(paction == NULL) {
+                            fprintf(stderr, "insufficient memory\n");
+                            goto cleanup;
+                        }
+
+                        *paction = NULL;
                     }
+
+                    paction = vector_append(action_vector);
+
+                    if(paction == NULL) {
+                        fprintf(stderr, "insufficient memory\n");
+                        goto cleanup;
+                    }
+
+                    *paction = action;
+
+                    // Consume action if there is any
+                    action = NULL;
 
                     if(rhs_vector->nelements == 0) {
                         fprintf(stderr, "zero length rule\n");
+                        goto cleanup;
+                    }
+
+                    if(rhs_vector->nelements + 1 != action_vector->nelements) {
+                        fprintf(stderr, "action vector must be exactly one element longer than RHS vector\n");
                         goto cleanup;
                     }
 
@@ -548,11 +599,8 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
 
                     rule->length = rhs_vector->nelements;
                     rule->lhs = lhs;
-                    rule->rhs = palloc(grammar->pool, rule->length * sizeof(boo_uint_t));
-                    rule->action = action;
 
-                    // Consume action if there is any
-                    action = NULL;
+                    rule->rhs = palloc(grammar->pool, rule->length * sizeof(boo_uint_t));
 
                     if(rule->rhs == NULL) {
                         fprintf(stderr, "insufficient memory\n");
@@ -560,6 +608,17 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     }
 
                     memcpy(rule->rhs, rhs_vector->elements, rule->length * sizeof(boo_uint_t));
+
+                    rule->num_actions = action_vector->nelements;
+
+                    rule->actions = palloc(grammar->pool, rule->num_actions * sizeof(boo_action_t*));
+
+                    if(rule->actions == NULL) {
+                        fprintf(stderr, "insufficient memory\n");
+                        goto cleanup;
+                    }
+
+                    memcpy(rule->actions, action_vector->elements, rule->num_actions * sizeof(boo_action_t*));
 
                     grammar_add_rule(grammar, rule);
 
@@ -576,6 +635,7 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     }
 
                     vector_clear(rhs_vector);
+                    vector_clear(action_vector);
                 }
                 else {
                     flags = 0;
@@ -583,12 +643,20 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     rhs = vector_append(rhs_vector);
 
                     if(rhs == NULL) {
+                        fprintf(stderr, "insufficient memory\n");
+                        goto cleanup;
+                    }
+
+                    paction = vector_append(action_vector);
+
+                    if(paction == NULL) {
+                        fprintf(stderr, "insufficient memory\n");
                         goto cleanup;
                     }
 
                     if(token.data[0] == '\'') {
                         if(token.len != 3) {
-                            fprintf(stderr, "Invalid token");
+                            fprintf(stderr, "invalid token\n");
                             goto cleanup;
                         }
 
@@ -605,6 +673,10 @@ boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *
                     }
 
                     *rhs = symbol->value;
+                    *paction = action;
+
+                    // Consume action if there is any
+                    action = NULL;
                 }
                 
                 break;

@@ -77,6 +77,7 @@ boo_int_t output_symbols(boo_output_t *output, boo_grammar_t *grammar)
 
 boo_int_t output_lookup(boo_output_t *output, boo_grammar_t *grammar)
 {
+    boo_int_t rc;
     boo_str_t prefix;
     u_char *p;
 
@@ -92,7 +93,7 @@ boo_int_t output_lookup(boo_output_t *output, boo_grammar_t *grammar)
     *p++ = '_';
     *p++ = 't';
 
-    boo_int_t rc = lookup_write(output->file, output->term, &prefix);
+    rc = lookup_write(output->file, output->term, &prefix);
 
     if(rc != BOO_OK) {
         return rc;
@@ -111,13 +112,31 @@ boo_int_t output_lookup(boo_output_t *output, boo_grammar_t *grammar)
     *p++ = 'n';
     *p++ = 't';
 
-    return lookup_write(output->file, output->nterm, &prefix);
+    rc = lookup_write(output->file, output->nterm, &prefix);
+
+    if(rc != BOO_OK) {
+        return rc;
+    }
+
+    prefix.len = grammar->prefix->len + sizeof("_a") - 1;
+    prefix.data = palloc(output->pool, prefix.len);
+
+    if(prefix.data == NULL) {
+        return BOO_ERROR;
+    }
+
+    p = boo_strcpy(prefix.data, grammar->prefix);
+
+    *p++ = '_';
+    *p++ = 'a';
+
+    return lookup_write(output->file, output->actions, &prefix);
 }
 
 boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const char *filename)
 {
-    boo_rule_t *rule;
     boo_action_t *action;
+    boo_rule_t *rule;
     FILE *fin;
     int c;
     unsigned ref;
@@ -177,19 +196,18 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
     fprintf(output->file, " *context, ");
     boo_puts_lower(output->file, grammar->prefix);
     fprintf(output->file, "_stack_elm_t *top) {\n");
+    fprintf(output->file, "    ");
+    boo_puts_lower(output->file, grammar->prefix);
+    fprintf(output->file, "_stack_elm_t next = *top;\n");
     fprintf(output->file, "    switch(action) {\n");
 
-    rule = boo_list_begin(&grammar->rules);
+    action = boo_list_begin(&grammar->actions);
 
-    while(rule != boo_list_end(&grammar->rules)) {
-        action = rule->action;
+    while(action != boo_list_end(&grammar->actions)) {
 
-        if(action == NULL) {
-            rule = boo_list_next(rule);
-            continue;
-        }
+        rule = action->rule;
 
-        fprintf(output->file, "         case %d: ", rule->rule_n);
+        fprintf(output->file, "         case %d: ", action->action_n);
 
         fseek(fin, action->start, SEEK_SET);
 
@@ -212,7 +230,7 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
                         return BOO_ERROR;
                     }
 
-                    fprintf(output->file, "top[%d].val.", 1 - action->rule_length);
+                    fprintf(output->file, "top[%d].val.", 1 - action->rule->length);
                     boo_puts(output->file, &grammar->lhs_lookup[boo_code_to_symbol(rule->lhs)].type->name);
                     escape = 0;
                 }
@@ -228,13 +246,13 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
                         }
 
                         if(grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[ref - 1])].type == NULL) {
-                            fprintf(stderr, "The symbol ");
+                            fprintf(stderr, "Symbol ");
                             boo_puts(stderr, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[ref - 1])].name);
                             fprintf(stderr, " is used in an action but has no type assigned\n");
                             return BOO_ERROR;
                         }
 
-                        fprintf(output->file, "top[%d].val.", 1 - action->rule_length + ref - 1);
+                        fprintf(output->file, "top[%d].val.", 1 - action->rule->length + ref - 1);
                         boo_puts(output->file, &grammar->lhs_lookup[boo_code_to_symbol(rule->rhs[ref - 1])].type->name);
 
                         ref = 0;
@@ -262,7 +280,7 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
 
         fprintf(output->file, "\n             break;\n");
 
-        rule = boo_list_next(rule);
+        action = boo_list_next(action);
     }
 
     fprintf(output->file, "    }\n};\n\n");
@@ -428,6 +446,29 @@ output_conflict(boo_output_t *output, boo_grammar_t *grammar, boo_lalr1_item_t *
 }
 
 static boo_int_t
+output_add_action(boo_output_t *output, boo_action_t *action, boo_uint_t state, boo_uint_t symbol)
+{
+    boo_int_t rc;
+
+    rc = lookup_get_transition(output->actions, state, symbol);
+
+    if(rc != BOO_DECLINED && rc != action->action_n) {
+        fprintf(output->debug, "unable to add action %d to state %d\n", action->action_n, state);
+        return BOO_ERROR;
+    }
+    else {
+        fprintf(output->debug, "adding action %d to state %d\n", action->action_n, state);
+        rc = lookup_add_transition(output->actions, state, symbol, action->action_n);
+
+        if(rc != BOO_OK) {
+            return rc;
+        }
+    }
+
+    return BOO_OK;
+}
+
+static boo_int_t
 output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t state, boo_lalr1_item_t *item)
 {
     boo_int_t rc;
@@ -512,6 +553,18 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
                     return rc;
                 }
             }
+
+            /*
+             * Add action
+             */
+            if(item->pos < item->num_actions && item->actions[item->pos] != NULL) {
+
+                rc = output_add_action(output, item->actions[item->pos], state, symbol);
+
+                if(rc != BOO_OK) {
+                    return rc;
+                }
+            }
         }
 
         tr = tr->next;
@@ -522,10 +575,13 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
 
 static boo_int_t
 output_add_item(boo_output_t *output, boo_grammar_t *grammar,
-  boo_lalr1_item_set_t *item_set, boo_lalr1_item_t *item)
+  boo_uint_t state, boo_lalr1_item_t *item)
 {
     boo_int_t rc;
     boo_uint_t symbol;
+#if 0
+    boo_uint_t action_pos;
+#endif
     boo_lhs_lookup_t *lhs_lookup;
 
     if(item->transition != NULL)
@@ -542,7 +598,7 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
                 symbol = lhs_lookup->name.data[0];
 
                 fprintf(output->debug, "adding transition '%c' to state %d -> %d\n",
-                    symbol, item_set->state_n,
+                    symbol, state,
                     item->transition->item_set->state_n);
             }
             else {
@@ -551,7 +607,7 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
                 fprintf(output->debug, "adding transition ");
                 boo_puts(output->debug, &lhs_lookup->name);
                 fprintf(output->debug, " (%d) to state %d -> %d\n",
-                    symbol, item_set->state_n,
+                    symbol, state,
                     item->transition->item_set->state_n);
             }
 
@@ -560,27 +616,43 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
              * with an existing transition and if so,
              * output the conflict
              */
-            rc = lookup_get_transition(output->term, item_set->state_n, symbol);
+            rc = lookup_get_transition(output->term, state, symbol);
 
             if(rc != BOO_DECLINED && rc != item->transition->item_set->state_n) {
-                output_conflict(output, grammar, item, item_set->state_n, item->rhs[item->pos],
+                output_conflict(output, grammar, item, state, item->rhs[item->pos],
                     item->transition->item_set->state_n, rc);
             }
             else {
-                rc = lookup_add_transition(output->term, item_set->state_n, symbol,
+                rc = lookup_add_transition(output->term, state, symbol,
                     item->transition->item_set->state_n);
 
                 if(rc != BOO_OK) {
                     return rc;
                 }
             }
+
+            /*
+             * Add action
+             */
+#if 0
+            action_pos = item->pos + 1;
+
+            if(action_pos < item->num_actions && item->actions[action_pos] != NULL) {
+
+                rc = output_add_action(output, item->actions[action_pos], state, symbol);
+
+                if(rc != BOO_OK) {
+                    return rc;
+                }
+            }
+#endif
         }
         else /*if(item->core)*/ {
 
             /*
              * The marker is in front of a non-terminal
              */
-            rc = lookup_add_transition(output->nterm, item_set->state_n,
+            rc = lookup_add_transition(output->nterm, state,
                 boo_code_to_symbol(item->rhs[item->pos]),
                 item->transition->item_set->state_n);
 
@@ -595,7 +667,7 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
          * The marker is at the end of a rule,
          * add lookahead data
          */
-        rc = output_add_lookahead(output, grammar, item_set->state_n, item);
+        rc = output_add_lookahead(output, grammar, state, item);
 
         if(rc != BOO_OK) {
             return rc;
@@ -606,7 +678,7 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
         /*
          * The marker is in front of an $eof symbol
          */
-        rc = lookup_add_transition(output->term, item_set->state_n,
+        rc = lookup_add_transition(output->term, state,
             256, 0);
 
         if(rc != BOO_OK) {
@@ -627,7 +699,7 @@ output_add_item_set(boo_output_t *output, boo_grammar_t *grammar, boo_lalr1_item
 
     while(item != boo_list_end(&item_set->items)) {
 
-        rc = output_add_item(output, grammar, item_set, item);
+        rc = output_add_item(output, grammar, item_set->state_n, item);
 
         if(rc != BOO_OK) {
             return rc;
@@ -670,6 +742,14 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
 
     output->nterm->debug = output->debug;
 
+    output->actions = lookup_create(output->pool, grammar->num_item_sets);
+
+    if(output->actions == NULL) {
+        return BOO_ERROR;
+    }
+
+    output->actions->debug = output->debug;
+
     item_set = boo_list_begin(&grammar->item_sets);
 
     while(item_set != boo_list_end(&grammar->item_sets)) {
@@ -689,5 +769,11 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
         return rc;
     }
 
-    return lookup_index(output->nterm);
+    rc = lookup_index(output->nterm);
+
+    if(rc != BOO_OK) {
+        return rc;
+    }
+
+    return lookup_index(output->actions);
 }

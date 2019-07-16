@@ -57,6 +57,7 @@ typedef struct {
     symtab_t                *symtab;
     boo_list_t              types;
     boo_list_t              rules;
+    boo_list_t              actions;
     boo_list_t              item_sets;
     boo_list_t              reverse_item_sets;
     boo_list_t              reductions;
@@ -67,6 +68,7 @@ typedef struct {
     boo_uint_t              root_symbol;
 
     boo_uint_t              num_rules;
+    boo_uint_t              num_actions;
     boo_uint_t              num_item_sets;
     boo_uint_t              num_symbols;
 
@@ -85,8 +87,9 @@ typedef struct {
 typedef struct {
     boo_list_entry_t        entry;
 
-    boo_uint_t              rule_n;
-    boo_uint_t              rule_length;
+    boo_uint_t              action_n;
+    struct boo_rule_s       *rule;
+    boo_uint_t              pos;
 
     /*
      * Start and end offsets of the action code in the source file
@@ -102,7 +105,8 @@ typedef struct boo_rule_s {
     boo_uint_t              lhs;
     boo_uint_t              *rhs;
 
-    boo_action_t            *action;
+    boo_uint_t              num_actions;
+    boo_action_t            **actions;
 
     struct boo_rule_s       *lhs_hash_next;
     void                    *booked_by_item_set;
@@ -137,6 +141,9 @@ typedef struct boo_lalr1_item {
     boo_uint_t              lhs;
     boo_uint_t              *rhs; 
 
+    boo_uint_t              num_actions;
+    boo_action_t            **actions;
+
     boo_transition_t        *transition;
 
     /*
@@ -145,9 +152,14 @@ typedef struct boo_lalr1_item {
     boo_uint_t              remove;
 
     /*
-     * The symbol in front of the marker of the original rule this item is derived from
+     * The symbol in front of the marker of the original item this item is derived from
+     * (lookahead only)
      */
     boo_uint_t              original_symbol;
+
+    /*
+     * A reference to the item this item is derived from (lookahead only)
+     */
     struct boo_lalr1_item   *instantiated_from;
 
     unsigned                closed:1;

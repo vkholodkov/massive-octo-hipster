@@ -8,7 +8,7 @@
 typedef struct {
     pool_t              *pool;
     boo_uint_t          max_cells, row_stride, num_states;
-    boo_lookup_table_t  *term, *nterm;
+    boo_lookup_table_t  *term, *nterm, *actions;
     FILE                *file, *debug;
 } boo_output_t;
 

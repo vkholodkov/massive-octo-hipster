@@ -22,6 +22,7 @@ boo_grammar_t *grammar_create(pool_t *p)
 
     boo_list_init(&grammar->types);
     boo_list_init(&grammar->rules);
+    boo_list_init(&grammar->actions);
     boo_list_init(&grammar->item_sets);
     boo_list_init(&grammar->reverse_item_sets);
     boo_list_init(&grammar->reductions);
@@ -103,11 +104,16 @@ boo_int_t grammar_wrapup(boo_grammar_t *grammar) {
  */
 void grammar_add_rule(boo_grammar_t *grammar, boo_rule_t *rule)
 {
+    boo_uint_t i;
+
     rule->rule_n = grammar->num_rules++;
 
-    if(rule->action != NULL) {
-        rule->action->rule_n = rule->rule_n;
-        rule->action->rule_length = rule->length;
+    for(i = 0 ; i != rule->num_actions ; i++) {
+        if(rule->actions[i] != NULL) {
+            rule->actions[i]->action_n = grammar->num_actions++;
+            rule->actions[i]->rule = rule;
+            boo_list_append(&grammar->actions, &rule->actions[i]->entry);
+        } 
     }
 
     boo_list_append(&grammar->rules, &rule->entry);
@@ -125,6 +131,8 @@ grammar_item_from_rule(boo_lalr1_item_t *item, boo_rule_t *rule)
     item->length = rule->length;
     item->pos = 0;
     item->transition = NULL;
+    item->num_actions = rule->num_actions;
+    item->actions = rule->actions;
 }
 
 /*
@@ -233,7 +241,6 @@ grammar_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
                 item->closed = 1;
             }
 
-//            item = boo_list_next(item);
         }
         /*
          * Do until there is nothing more to close
@@ -480,6 +487,9 @@ grammar_find_transitions(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set,
             new_item->rhs = item->rhs;
             new_item->pos = item->pos + 1;
             new_item->core = 1;
+
+            new_item->num_actions = item->num_actions;
+            new_item->actions = item->actions;
 
             grammar_item_set_add_item(new_item_set, new_item);
 
