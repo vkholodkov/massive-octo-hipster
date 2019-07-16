@@ -117,7 +117,7 @@ typedef struct boo_lalr1_item_set_s {
     boo_list_t              items;
 
     /*
-     * Transitions that point to this item
+     * Transitions that point to this item set
      */
     boo_transition_t        *transitions;
 

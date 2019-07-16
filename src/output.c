@@ -450,19 +450,46 @@ output_add_action(boo_output_t *output, boo_action_t *action, boo_uint_t state, 
 {
     boo_int_t rc;
 
+    /*
+     * Check if the action to be added is conflicting
+     * with an existing action and if so,
+     * report an error
+     */
     rc = lookup_get_transition(output->actions, state, symbol);
 
     if(rc != BOO_DECLINED && rc != action->action_n) {
         fprintf(output->debug, "unable to add action %d to state %d\n", action->action_n, state);
         return BOO_ERROR;
     }
-    else {
-        fprintf(output->debug, "adding action %d to state %d\n", action->action_n, state);
-        rc = lookup_add_transition(output->actions, state, symbol, action->action_n);
 
-        if(rc != BOO_OK) {
-            return rc;
+    rc = lookup_add_transition(output->actions, state, symbol, action->action_n);
+
+    if(rc != BOO_OK) {
+        return rc;
+    }
+
+    return BOO_OK;
+}
+
+static boo_int_t
+output_add_actions(boo_output_t *output, boo_uint_t state, boo_uint_t symbol, boo_lalr1_item_set_t *item_set)
+{
+    boo_int_t rc;
+    boo_lalr1_item_t *item;
+
+    item = boo_list_begin(&item_set->items);
+
+    while(item != boo_list_end(&item_set->items)) {
+
+        if(item->pos != item->length && item->pos < item->num_actions && item->actions[item->pos] != NULL) {
+            rc = output_add_action(output, item->actions[item->pos], state, symbol);
+
+            if(rc != BOO_OK) {
+                return rc;
+            }
         }
+        
+        item = boo_list_next(item);
     }
 
     return BOO_OK;
@@ -537,7 +564,7 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
             }
 
             /*
-             * Check if transition to be added is conflicting
+             * Check if the transition to be added is conflicting
              * with an existing transition and if so,
              * output the conflict
              */
@@ -555,7 +582,7 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
             }
 
             /*
-             * Add action
+             * Add an action
              */
             if(item->pos < item->num_actions && item->actions[item->pos] != NULL) {
 
@@ -579,9 +606,6 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
 {
     boo_int_t rc;
     boo_uint_t symbol;
-#if 0
-    boo_uint_t action_pos;
-#endif
     boo_lhs_lookup_t *lhs_lookup;
 
     if(item->transition != NULL)
@@ -589,7 +613,8 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
         if(boo_is_token(item->rhs[item->pos])) {
 
             /*
-             * The marker is in front of a terminal
+             * The marker is in front of a terminal,
+             * add an entry into the terminal lookup table
              */
             symbol = boo_code_to_symbol(item->rhs[item->pos]);
             lhs_lookup = grammar->lhs_lookup + symbol;
@@ -612,7 +637,7 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
             }
 
             /*
-             * Check if transition to be added is conflicting
+             * Check if the transition to be added is conflicting
              * with an existing transition and if so,
              * output the conflict
              */
@@ -632,25 +657,19 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
             }
 
             /*
-             * Add action
+             * Add actions
              */
-#if 0
-            action_pos = item->pos + 1;
+            rc = output_add_actions(output, state, symbol, item->transition->item_set);
 
-            if(action_pos < item->num_actions && item->actions[action_pos] != NULL) {
-
-                rc = output_add_action(output, item->actions[action_pos], state, symbol);
-
-                if(rc != BOO_OK) {
-                    return rc;
-                }
+            if(rc != BOO_OK) {
+                return rc;
             }
-#endif
         }
         else /*if(item->core)*/ {
 
             /*
-             * The marker is in front of a non-terminal
+             * The marker is in front of a non-terminal,
+             * add an item into non-terminal lookup table
              */
             rc = lookup_add_transition(output->nterm, state,
                 boo_code_to_symbol(item->rhs[item->pos]),
@@ -665,7 +684,7 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
 
         /*
          * The marker is at the end of a rule,
-         * add lookahead data
+         * add lookahead transitions
          */
         rc = output_add_lookahead(output, grammar, state, item);
 
@@ -676,7 +695,8 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
     else if(boo_token_get(item->rhs[item->pos]) == BOO_EOF) {
 
         /*
-         * The marker is in front of an $eof symbol
+         * The marker is in front of an $eof symbol,
+         * add an entry into the terminal lookup table
          */
         rc = lookup_add_transition(output->term, state,
             256, 0);

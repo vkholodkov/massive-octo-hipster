@@ -203,7 +203,7 @@ grammar_close_item_set(boo_grammar_t *grammar, boo_lalr1_item_set_t *item_set)
                  */
                 if(item->pos != item->length && !boo_is_token(item->rhs[item->pos])) {
                     /*
-                     * Lookup all rules that have a symbol in question
+                     * Lookup all rules that have the symbol in question
                      * on the left-hand side
                      */
                     rule = grammar_lookup_rules_by_lhs(grammar, item->rhs[item->pos]);
@@ -561,7 +561,7 @@ grammar_renumber_item_sets(boo_grammar_t *grammar, boo_list_t *item_sets)
 }
 
 /*
- * Add an item to core set index
+ * Add an item to the core set index
  */
 static boo_int_t
 grammar_add_item_to_core_set_index(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t *state_n)
@@ -737,11 +737,6 @@ boo_int_t grammar_generate_lr_item_sets(boo_grammar_t *grammar, boo_list_t *dest
     }
 
     return grammar_build_item_sets(grammar, dest);
-}
-
-boo_int_t grammar_generate_lookahead_sets(boo_grammar_t *grammar)
-{
-    return BOO_OK;
 }
 
 void grammar_dump_rule(FILE *out, boo_grammar_t *grammar, boo_rule_t *rule)
