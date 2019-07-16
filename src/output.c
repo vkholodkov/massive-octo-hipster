@@ -3,8 +3,6 @@
 
 #include "output.h"
 
-#define multiple_reductions 0
-
 boo_output_t *output_create(pool_t *pool)
 {
     boo_output_t *output;
@@ -118,40 +116,6 @@ boo_int_t output_lookup(boo_output_t *output, boo_grammar_t *grammar)
 
 boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const char *filename)
 {
-#if multiple_reductions
-    boo_uint_t i, n = 0;
-    boo_reduction_t *reduction;
-
-    fprintf(output->file, "static const unsigned int ");
-    boo_puts_lower(output->file, grammar->prefix);
-    fprintf(output->file, "_action[] = {\n");
-
-    reduction = boo_list_begin(&grammar->reductions);
-
-    while(reduction != boo_list_end(&grammar->reductions)) {
-        fprintf(output->file, "%6d,", reduction->num_actions);
-
-        if(n % output->row_stride == output->row_stride - 1) {
-            fprintf(output->file, "\n");
-        }
-
-        n++;
-
-        for(i = 0 ; i != reduction->num_actions ; i++) {
-            fprintf(output->file, "%6d,", reduction->actions[i]);
-
-            if(n % output->row_stride == output->row_stride - 1) {
-                fprintf(output->file, "\n");
-            }
-
-            n++;
-        }
-
-        reduction = boo_list_next(reduction);
-    }
-
-    fprintf(output->file, "\n};\n\n");
-#else
     boo_rule_t *rule;
     boo_action_t *action;
     FILE *fin;
@@ -302,7 +266,6 @@ boo_int_t output_actions(boo_output_t *output, boo_grammar_t *grammar, const cha
     }
 
     fprintf(output->file, "    }\n};\n\n");
-#endif
 
     fclose(fin);
 
@@ -411,23 +374,6 @@ boo_int_t output_rules(boo_output_t *output, boo_grammar_t *grammar)
     return BOO_OK;
 }
 
-#if multiple_reductions
-static void
-output_renumber_reduction(boo_grammar_t *grammar)
-{
-    boo_reduction_t *reduction;
-    boo_uint_t pos = 0;
-
-    reduction = boo_list_begin(&grammar->reductions);
-
-    while(reduction != boo_list_end(&grammar->reductions)) {
-        reduction->pos = pos;
-        pos += (1 /* number of reductions */ + reduction->num_actions);
-        reduction = boo_list_next(reduction);
-    }
-}
-#endif
-
 static void
 output_conflict(boo_output_t *output, boo_grammar_t *grammar, boo_lalr1_item_t *item,
     boo_uint_t state, boo_uint_t code, boo_int_t target1, boo_int_t target2)
@@ -533,25 +479,15 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
 
                 if(lhs_lookup->literal) {
                     symbol = lhs_lookup->name.data[0];
-#if multiple_reductions
-                    fprintf(output->debug, "adding lookahead '%c' to state %d reduce %d\n",
-                        symbol, state, reduction->actions[reduction->num_actions - 1]);
-#else
                     fprintf(output->debug, "adding lookahead '%c' to state %d reduce %d\n",
                         symbol, state, reduction->rule_n);
-#endif
                 }
                 else {
                     symbol = lhs_lookup->code;
                     fprintf(output->debug, "adding lookahead ");
                     boo_puts(output->debug, &lhs_lookup->name);
-#if multiple_reductions
-                    fprintf(output->debug, " (%d) to state %d reduce %d\n", symbol,
-                        state, reduction->actions[reduction->num_actions - 1]);
-#else
                     fprintf(output->debug, " (%d) to state %d reduce %d\n", symbol,
                         state, reduction->rule_n);
-#endif
                 }
             }
             else {
@@ -570,11 +506,7 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
                 output_conflict(output, grammar, item, state, tr->input, -reduction->rule_n, rc);
             }
             else {
-#if multiple_reductions
-                rc = lookup_add_transition(output->term, state, symbol, -reduction->pos);
-#else
                 rc = lookup_add_transition(output->term, state, symbol, -reduction->rule_n);
-#endif
 
                 if(rc != BOO_OK) {
                     return rc;
@@ -737,9 +669,7 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
     }
 
     output->nterm->debug = output->debug;
-#if multiple_reductions
-    output_renumber_reduction(grammar);
-#endif
+
     item_set = boo_list_begin(&grammar->item_sets);
 
     while(item_set != boo_list_end(&grammar->item_sets)) {

@@ -3,8 +3,6 @@
 
 #include "grammar.h"
 
-#define multiple_reductions 0
-
 static boo_int_t
 lookahead_add_item(boo_grammar_t*, boo_lalr1_item_t*, boo_uint_t, boo_uint_t);
 
@@ -500,14 +498,7 @@ lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sy
     boo_trie_t *t = grammar->lookahead_set;
     boo_trie_node_t *n;
     boo_uint_t *p, *q, symbol;
-#if multiple_reductions
-    boo_uint_t *actions, num_actions;
-    boo_lalr1_item_t *i;
-#endif
     boo_reduction_t *reduction;
-#if multiple_reductions
-    boo_uint_t conflict;
-#endif
 
     /*
      * Add an element corresponding to the left-hand-side
@@ -545,46 +536,18 @@ lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sy
         return BOO_ERROR;
     }
 
-#if multiple_reductions
-    i = item;
-
-    num_actions = 0;
-
-    while(i != NULL && !i->core) {
-        num_actions++;
-        i = i->instantiated_from;
-    }
-#endif
-
     /*
      * We've reached a leaf of the trie
      */
     if(n->leaf != NULL) {
+
         reduction = n->leaf;
-#if multiple_reductions
-        conflict = 0;
 
-        if(reduction->num_actions == num_actions) {
-            i = item; actions = reduction->actions;
-
-            while(i != NULL && !i->core) {
-                if(*actions != i->rule_n) {
-                    conflict = 1;
-                    break;
-                }
-                i = i->instantiated_from; actions++;
-            }
-        }
-        else {
-            conflict = 1;
-        }
-        if(conflict) {
-#else
         if(reduction->rule_n != item->rule_n) {
-#endif
             fprintf(stderr, "Multiple definitions of the rule in the grammar:\n");
             grammar_dump_rule_from_item(stderr, grammar, item);
         }
+
         return BOO_OK;
     }
 
@@ -595,26 +558,6 @@ lookahead_add_item(boo_grammar_t *grammar, boo_lalr1_item_t *item, boo_uint_t sy
     }
 
     reduction->rule_n = item->rule_n;
-
-#if multiple_reductions
-    reduction->num_actions = num_actions;
-
-    reduction->actions = actions = pcalloc(grammar->pool, reduction->num_actions * sizeof(boo_uint_t));
-
-    if(actions == NULL) {
-        return BOO_ERROR;
-    }
-
-    /*
-     * Build reduction list
-     */
-    i = item;
-
-    while(i != NULL && !i->core) {
-        *actions++ = i->rule_n;
-        i = i->instantiated_from;
-    }
-#endif
 
     n->leaf = reduction;
 

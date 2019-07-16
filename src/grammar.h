@@ -157,10 +157,6 @@ typedef struct boo_lalr1_item {
 typedef struct {
     boo_list_entry_t        entry;
     boo_uint_t              pos, rule_n;
-#if 0
-    boo_uint_t              num_actions;
-    boo_uint_t              *actions;
-#endif
 } boo_reduction_t;
 
 #define grammar_lookup_rules_by_lhs(grammar,symbol) (boo_rule_t*)grammar->lhs_lookup[boo_code_to_symbol(symbol)].rules
