@@ -15,6 +15,7 @@ const token_name_t token_names[] = {
         {"prefix",       PREFIX},
         {"context",      CONTEXT},
         {"prefix_upper", PREFIX_UPPER},
+        {"filename",     FILENAME},
 
         /* Indicates end of array */
         {"",             ARRAY_FINISH},
@@ -114,6 +115,10 @@ int get(void *closure, const char *name, struct mustach_sbuf *sbuf) {
             sbuf->value = (const char *) boo_output->grammar->context->data;
             break;
         }
+        case FILENAME: {
+            sbuf->value = (const char *) boo_output->filename.data;
+            break;
+        }
             /* UNKNOWN Case for extra tokens */
             //TODO: Implement hash index if too many tokens.
             // Currently just comparing entire array.
@@ -131,6 +136,7 @@ int get(void *closure, const char *name, struct mustach_sbuf *sbuf) {
                 }
             }
             if (not_found) {
+                fprintf(stdout, "Unknown token: %s\n", name);
                 return MUSTACH_ERROR_ITEM_NOT_FOUND;
             }
             break;
@@ -138,6 +144,10 @@ int get(void *closure, const char *name, struct mustach_sbuf *sbuf) {
     }
 
     return MUSTACH_OK;
+}
+
+int emit(void *closure, const char *buffer, size_t size, int escape, FILE *file) {
+    return fwrite(buffer, size, 1, file) != 1 ? MUSTACH_ERROR_SYSTEM : MUSTACH_OK;
 }
 
 //TODO: Copy from mustach-tool.c. Needs to be re-implemented to use pool.

@@ -31,6 +31,8 @@ int leave(void *closure);
 
 int get(void *closure, const char *name, struct mustach_sbuf *sbuf);
 
+int emit(void *closure, const char *buffer, size_t size, int escape, FILE *file);
+
 static struct mustach_itf itf = {
         .start      = start,
         .put        = NULL,
@@ -40,7 +42,7 @@ static struct mustach_itf itf = {
         /* Not using partial for now */
         .partial    = NULL,
         .get        = get,
-        .emit       = NULL,
+        .emit       = emit,
         .stop       = NULL
 };
 
@@ -48,6 +50,7 @@ typedef struct {
     boo_vector_t *extra_tokens;
     boo_grammar_t *grammar;
     boo_output_t *output;
+    boo_str_t filename;
     const char *template;
 } closure_t;
 
@@ -60,7 +63,7 @@ enum token_value {
     PREFIX,
     CONTEXT,
     PREFIX_UPPER,
-
+    FILENAME,
     UNKNOWN, // Unknown for extra literals (if any)
     ARRAY_FINISH // We use END for array finish hint
 };

@@ -271,6 +271,7 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
             result = BOO_ERROR;
             goto cleanup;
         }
+        closure->filename = output_filenames[0];
         closure->output = output;
         closure->grammar = grammar;
 
@@ -319,6 +320,7 @@ boo_int_t build_project(char **filenames, boo_uint_t num_filenames) {
             result = fmustach_moh(closure, NULL);
 
             if (result != MUSTACH_OK) {
+                fprintf(stdout, "Mustache pass failed.\n");
                 result = BOO_ERROR;
                 goto cleanup2;
             }
