@@ -2,7 +2,7 @@
 #ifndef _SYMTAB_
 #define _SYMTAB_
 
-#include "string.h"
+#include "bstring.h"
 #include "boo.h"
 
 #include "list.h"

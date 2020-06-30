@@ -6,7 +6,7 @@
 
 #include "boo.h"
 #include "pool.h"
-#include "string.h"
+#include "bstring.h"
 
 typedef struct gap {
     boo_uint_t from, to;

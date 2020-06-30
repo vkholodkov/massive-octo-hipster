@@ -1,7 +1,7 @@
 
 #include <ctype.h>
 
-#include "string.h"
+#include "bstring.h"
 
 u_char *boo_strcpy(u_char *p,boo_str_t *s) {
     memcpy(p, s->data, s->len);
