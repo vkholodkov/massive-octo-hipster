@@ -247,18 +247,9 @@ RelationalExpression
     | RelationalExpression LT ShiftExpression
     | RelationalExpression GT ShiftExpression
     | RelationalExpression LE ShiftExpression
-    | RelationalExpression LE ShiftExpression
-    | RelationalExpression INSTANCEOF ShiftExpression
-    | RelationalExpression IN ShiftExpression
-    ;
-
-RelationalExpression
-    : ShiftExpression
-    | RelationalExpression LT ShiftExpression
-    | RelationalExpression GT ShiftExpression
-    | RelationalExpression LE ShiftExpression
     | RelationalExpression GE ShiftExpression
     | RelationalExpression INSTANCEOF ShiftExpression
+    | RelationalExpression IN ShiftExpression
     ;
 
 EqualityExpression
