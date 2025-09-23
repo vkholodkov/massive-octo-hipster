@@ -229,7 +229,7 @@ boo_int_t lookup_remove_transition(boo_lookup_table_t *lookup, boo_uint_t state,
     return BOO_DECLINED;
 }
 
-boo_int_t lookup_get_transition(boo_lookup_table_t *lookup, boo_uint_t state, boo_uint_t symbol)
+boo_int_t lookup_get_transition(boo_lookup_table_t *lookup, boo_uint_t state, boo_uint_t symbol, boo_int_t *result)
 {
     boo_lookup_transition_t *t;
 
@@ -237,7 +237,10 @@ boo_int_t lookup_get_transition(boo_lookup_table_t *lookup, boo_uint_t state, bo
 
     while(t != NULL) {
         if(t->input == symbol) {
-            return t->target;
+            if(result != NULL) {
+                *result = t->target;
+            }
+            return BOO_OK;
         }
 
         t = t->next;

@@ -38,6 +38,6 @@ boo_int_t lookup_index(boo_lookup_table_t*);
 boo_int_t lookup_write(FILE*, boo_lookup_table_t*, boo_str_t*);
 boo_int_t lookup_add_transition(boo_lookup_table_t*, boo_uint_t, boo_uint_t, boo_int_t);
 boo_int_t lookup_remove_transition(boo_lookup_table_t*, boo_uint_t, boo_uint_t);
-boo_int_t lookup_get_transition(boo_lookup_table_t*, boo_uint_t, boo_uint_t);
+boo_int_t lookup_get_transition(boo_lookup_table_t*, boo_uint_t, boo_uint_t, boo_int_t*);
 
 #endif
