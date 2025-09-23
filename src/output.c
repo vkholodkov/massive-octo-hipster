@@ -568,22 +568,36 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
             /*
              * Check if the transition to be added is conflicting
              * with an existing transition and if so,
-             * output the conflict
+             * process the conflict
              */
             rc = lookup_get_transition(output->term, state, symbol);
 
             if(rc != BOO_DECLINED) {
-                if(rc >= 0 && lhs_lookup->left) {
+                if(rc >= 0) {
                     /*
-                     * If the symbol is left-associative and the conflicting transition is 'shift',
-                     * then we can remove the transition table entry to force the parser to do a reduction.
+                     * First try to fix the conflict
                      */
-                    if(lookup_remove_transition(output->term, state, symbol) != BOO_OK) {
-                        fprintf(output->debug, "unable to fix a conflict in state %d\n", state);
-                        return BOO_ERROR;
-                    }
+                    if(lhs_lookup->left) {
+                        /*
+                         * If the symbol is left-associative and the conflicting transition is 'shift',
+                         * then we can replace the conflicting transition table entry and the
+                         * parser will do a reduction.
+                         */
+                        if(lookup_remove_transition(output->term, state, symbol) != BOO_OK) {
+                            fprintf(output->debug, "unable to fix a conflict in state %d\n", state);
+                            return BOO_ERROR;
+                        }
 
-                    rc = lookup_get_transition(output->term, state, symbol);
+                        rc = lookup_get_transition(output->term, state, symbol);
+                    }
+                    else if(lhs_lookup->right) {
+                        /*
+                         * If the symbol is right-associative and the conflicting transition is 'shift',
+                         * then we can keep the conflicting transition table entry and the
+                         * parser will shift.
+                         */
+                        goto done;
+                    }
                 }
 
                 if(rc != BOO_DECLINED) {
@@ -612,6 +626,7 @@ add_action:
                     return rc;
                 }
             }
+done:
         }
 
         tr = tr->next;
@@ -661,22 +676,34 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
             /*
              * Check if the transition to be added is conflicting
              * with an existing transition and if so,
-             * output the conflict
+             * process the conflict
              */
             rc = lookup_get_transition(output->term, state, symbol);
 
             if(rc != BOO_DECLINED) {
-                if(rc < 0 && lhs_lookup->right) {
+                if(rc < 0) {
                     /*
-                     * If the symbol is right-associative and the conflicting transition is 'reduce',
-                     * then we can remove the transition table entry to force the parser to shift.
+                     * First try to fix the conflict
                      */
-                    if(lookup_remove_transition(output->term, state, symbol) != BOO_OK) {
-                        fprintf(output->debug, "unable to fix a conflict in state %d\n", state);
-                        return BOO_ERROR;
-                    }
+                    if(lhs_lookup->right) {
+                        /*
+                         * If the symbol is right-associative and the conflicting transition is 'reduce',
+                         * then we can remove the transition table entry and the parser will shift.
+                         */
+                        if(lookup_remove_transition(output->term, state, symbol) != BOO_OK) {
+                            fprintf(output->debug, "unable to fix a conflict in state %d\n", state);
+                            return BOO_ERROR;
+                        }
 
-                    rc = lookup_get_transition(output->term, state, symbol);
+                        rc = lookup_get_transition(output->term, state, symbol);
+                    }
+                    else if(lhs_lookup->left) {
+                        /*
+                         * If the symbol is left-associative and the conflicting transition is 'reduce',
+                         * then we can keep the transition table entry and the parser will do a reduction.
+                         */
+                        goto done;
+                    }
                 }
 
                 if(rc != BOO_DECLINED) {
@@ -703,6 +730,7 @@ add_actions:
             if(rc != BOO_OK) {
                 return rc;
             }
+done:
         }
         else /*if(item->core)*/ {
             /*
