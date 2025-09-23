@@ -33,42 +33,16 @@ typedef struct boo_trie_transition {
     struct boo_trie_transition     *next;
 } boo_trie_transition_t;
 
-#if 0
-typedef struct boo_http_waf_gap {
-    boo_uint_t from, to;
-    struct boo_http_waf_gap *next;
-} boo_http_waf_gap_t;
-
-typedef struct {
-    boo_uint_t                  base;
-    boo_uint_t                  mask;
-    boo_http_waf_leaf_t         *leaf;
-    boo_uint_t                  padding;
-} boo_http_waf_state_t;
-#endif
-
 typedef struct {
     pool_t                      *pool;
     boo_trie_node_t             *root;
-#if 0
-    boo_http_waf_gap_t          *gaps, *free_gaps;
-#endif
 
     boo_uint_t                  end;
     boo_uint_t                  num_states;
-#if 0
-    boo_http_waf_state_t        *states;
-    u_char                      *next;
-#endif
-
 } boo_trie_t;
 
 boo_trie_t *tree_create(pool_t*);
 boo_trie_node_t *boo_trie_add_sequence(boo_trie_t*, boo_trie_node_t*, boo_uint_t*, boo_uint_t*);
 boo_trie_node_t *boo_trie_next(boo_trie_t*, boo_trie_node_t*, boo_uint_t);
-
-#if 0
-boo_int_t boo_http_waf_index_nodes(boo_http_waf_tree_t*);
-#endif
 
 #endif
