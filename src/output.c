@@ -570,8 +570,23 @@ output_add_lookahead(boo_output_t *output, boo_grammar_t *grammar, boo_uint_t st
              */
             rc = lookup_get_transition(output->term, state, symbol);
 
-            if(rc != BOO_DECLINED && rc != -reduction->rule_n) {
-                output_conflict(output, grammar, item, state, tr->input, -reduction->rule_n, rc);
+            if(rc != BOO_DECLINED) {
+                if(rc >= 0 && lhs_lookup->left) {
+                    /*
+                     * If the symbol is left-associative and the conflicting transition is 'shift',
+                     * then we can remove the transition table entry to force the parser to do a reduction.
+                     */
+                    if(lookup_remove_transition(output->term, state, symbol) != BOO_OK) {
+                        fprintf(output->debug, "unable to fix a conflict in state %d\n", state);
+                        return BOO_ERROR;
+                    }
+
+                    rc = lookup_get_transition(output->term, state, symbol);
+                }
+
+                if(rc != BOO_DECLINED && rc != -reduction->rule_n) {
+                    output_conflict(output, grammar, item, state, tr->input, -reduction->rule_n, rc);
+                }
             }
             else {
                 rc = lookup_add_transition(output->term, state, symbol, -reduction->rule_n);
@@ -643,9 +658,24 @@ output_add_item(boo_output_t *output, boo_grammar_t *grammar,
              */
             rc = lookup_get_transition(output->term, state, symbol);
 
-            if(rc != BOO_DECLINED && rc != item->transition->item_set->state_n) {
-                output_conflict(output, grammar, item, state, item->rhs[item->pos],
-                    item->transition->item_set->state_n, rc);
+            if(rc != BOO_DECLINED) {
+                if(rc < 0 && lhs_lookup->right) {
+                    /*
+                     * If the symbol is right-associative and the conflicting transition is 'reduce',
+                     * then we can remove the transition table entry to force the parser to shift.
+                     */
+                    if(lookup_remove_transition(output->term, state, symbol) != BOO_OK) {
+                        fprintf(output->debug, "unable to fix a conflict in state %d\n", state);
+                        return BOO_ERROR;
+                    }
+
+                    rc = lookup_get_transition(output->term, state, symbol);
+                }
+
+                if(rc != BOO_DECLINED && rc != item->transition->item_set->state_n) {
+                    output_conflict(output, grammar, item, state, item->rhs[item->pos],
+                        item->transition->item_set->state_n, rc);
+                }
             }
             else {
                 rc = lookup_add_transition(output->term, state, symbol,
@@ -737,6 +767,9 @@ boo_int_t output_add_grammar(boo_output_t *output, boo_grammar_t *grammar)
     boo_lalr1_item_set_t *item_set;
     boo_uint_t i, code;
 
+    /*
+     * Renumber the tokens
+     */
     code = UCHAR_MAX + 2;
 
     for(i = 0 ; i != grammar->num_symbols ; i++) {

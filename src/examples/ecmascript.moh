@@ -1,4 +1,7 @@
 
+%left '+' '-' ;
+%right ELSE PLUSPLUS MINUSMINUS ;
+
 Program
     : SourceElements
     ;

@@ -81,7 +81,7 @@ bootstrap_process_type_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t
     u_char *p = token->data;
     u_char *q = p + token->len;
     boo_str_t typename;
-    char token_buffer[128];
+    char token_buffer[MAX_TOKEN_LENGTH];
     boo_uint_t flags;
     symbol_t *symbol;
     boo_type_t *type;
@@ -173,7 +173,7 @@ static boo_int_t
 bootstrap_process_union_directive(FILE *fin, boo_grammar_t *grammar)
 {
     boo_int_t rc;
-    char token_buffer[128];
+    char token_buffer[MAX_TOKEN_LENGTH];
     boo_str_t token;
     boo_uint_t c, num_brakets, pos;
 
@@ -237,7 +237,7 @@ static boo_int_t
 bootstrap_process_context_directive(FILE *fin, boo_grammar_t *grammar, boo_str_t *token)
 {
     boo_int_t rc;
-    char token_buffer[128];
+    char token_buffer[MAX_TOKEN_LENGTH];
 
     while(!feof(fin)) {
 
@@ -283,7 +283,7 @@ static boo_int_t
 bootstrap_process_prefix_directive(FILE *fin, boo_grammar_t *grammar, boo_str_t *token)
 {
     boo_int_t rc;
-    char token_buffer[128];
+    char token_buffer[MAX_TOKEN_LENGTH];
 
     while(!feof(fin)) {
 
@@ -326,6 +326,68 @@ bootstrap_process_prefix_directive(FILE *fin, boo_grammar_t *grammar, boo_str_t 
 }
 
 static boo_int_t
+bootstrap_process_left_right_directives(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token)
+{
+    boo_int_t rc;
+    char token_buffer[MAX_TOKEN_LENGTH];
+    boo_str_t name;
+    boo_uint_t flags;
+    symbol_t *symbol;
+    boo_lhs_lookup_t *lookup;
+
+    while(!feof(fin)) {
+
+        rc = fscanf(fin, "%128s", token_buffer);
+
+        if(rc == EOF || rc != 1) {
+            fprintf(stderr, "%%left directive broken at the end of file\n");
+            return BOO_ERROR;
+        }
+
+        name.data = (u_char*)token_buffer;
+        name.len = strlen(token_buffer);
+
+        if(name.len == 1 && name.data[0] == ';') {
+            return BOO_OK;
+        }
+        else {
+            flags = 0;
+
+            if(name.data[0] == '\'') {
+                if(name.len != 3) {
+                    fprintf(stderr, "Invalid token\n");
+                    return BOO_ERROR;
+                }
+
+                name.data++;
+                name.len -= 2;
+
+                flags = BOO_LITERAL;
+            }
+
+            symbol = bootstrap_add_symbol(grammar, lhs_lookup, &name, flags);
+
+            if(symbol == NULL) {
+                return BOO_ERROR;
+            }
+
+            lookup = lhs_lookup->elements;
+
+            lookup += boo_code_to_symbol(symbol->value);
+
+            if(boo_const_strequ(token, "left")) {
+                lookup->left = 1;
+            }
+            else if(boo_const_strequ(token, "right")) {
+                lookup->right = 1;
+            }          
+        }
+    }
+        
+    return BOO_ERROR;
+}
+
+static boo_int_t
 bootstrap_process_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs_lookup, boo_str_t *token)
 {
     if(token->len > 4 && token->data[0] == 't' && token->data[1] == 'y' &&
@@ -349,6 +411,16 @@ bootstrap_process_directive(FILE *fin, boo_grammar_t *grammar, boo_vector_t *lhs
         token->data[5] == 'x')
     {
         return bootstrap_process_prefix_directive(fin, grammar, token);
+    }
+    else if(token->len == 4 && token->data[0] == 'l' && token->data[1] == 'e' &&
+        token->data[2] == 'f' && token->data[3] == 't')
+    {
+        return bootstrap_process_left_right_directives(fin, grammar, lhs_lookup, token);
+    }
+    else if(token->len == 5 && token->data[0] == 'r' && token->data[1] == 'i' &&
+        token->data[2] == 'g' && token->data[3] == 'h' && token->data[4] == 't')
+    {
+        return bootstrap_process_left_right_directives(fin, grammar, lhs_lookup, token);
     }
 
     return BOO_ERROR;
@@ -374,7 +446,7 @@ bootstrap_add_eof_symbol(boo_vector_t *rhs_vector)
 boo_int_t bootstrap_parse_file(boo_grammar_t *grammar, pool_t *pool, boo_str_t *filename)
 {
     FILE *fin;
-    char token_buffer[128];
+    char token_buffer[MAX_TOKEN_LENGTH];
     boo_int_t rc;
     parser_state_t state;
     boo_str_t token;

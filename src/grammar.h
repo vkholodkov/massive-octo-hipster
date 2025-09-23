@@ -35,6 +35,8 @@ typedef struct {
     boo_type_t              *type;
     unsigned                literal:1;
     unsigned                token:1;
+    unsigned                left:1;
+    unsigned                right:1;
 } boo_lhs_lookup_t;
 
 typedef struct boo_transition_s {

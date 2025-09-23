@@ -2,6 +2,8 @@
 #ifndef _BOO_COMMON_BOO_
 #define _BOO_COMMON_BOO_
 
+#define MAX_TOKEN_LENGTH  128
+
 #define BOO_OK              0
 #define BOO_ERROR           -1
 #define BOO_DONE            -2

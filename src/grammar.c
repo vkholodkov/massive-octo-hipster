@@ -87,6 +87,8 @@ boo_int_t grammar_wrapup(boo_grammar_t *grammar) {
         }
     }
 
+    fprintf(grammar->debug, "Rules:\n");
+
     rule = boo_list_begin(&grammar->rules);
 
     while(rule != boo_list_end(&grammar->rules)) {
