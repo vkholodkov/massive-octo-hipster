@@ -25,7 +25,7 @@ boo_int_t output_codes(boo_output_t *output, boo_grammar_t *grammar)
 
     fprintf(output->file, "#define ");
     boo_puts_upper(output->file, grammar->prefix);
-    fprintf(output->file, "_EOF %d\n", UCHAR_MAX + 1);
+    fprintf(output->file, "_EOF %d\n", BOO_OUTPUT_EOF);
 
     for(i = 0 ; i != grammar->num_symbols ; i++) {
         if(grammar->lhs_lookup[i].token && !grammar->lhs_lookup[i].literal) {
@@ -775,7 +775,7 @@ done:
          * add an 'accept' entry into the terminal lookup table
          */
         rc = lookup_add_transition(output->term, state,
-            256, 0);
+            BOO_OUTPUT_EOF, 0);
 
         if(rc != BOO_OK) {
             return rc;

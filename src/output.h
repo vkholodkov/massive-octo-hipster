@@ -5,6 +5,8 @@
 #include "grammar.h"
 #include "lookup.h"
 
+#define BOO_OUTPUT_EOF UCHAR_MAX + 1
+
 typedef struct {
     pool_t              *pool;
     boo_uint_t          max_cells, row_stride, num_states;
