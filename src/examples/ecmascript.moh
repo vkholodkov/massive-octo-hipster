@@ -1,6 +1,6 @@
 
-%left '+' '-' ;
-%right ELSE PLUSPLUS MINUSMINUS ;
+%left '+' '-' IN ;
+%right ELSE PLUSPLUS MINUSMINUS '(' '[' ;
 
 Program
     : SourceElements
@@ -13,7 +13,7 @@ SourceElements
 
 SourceElement
     : FunctionDeclaration
-    | Statement
+    | TopLevelStatement
     ;
 
 FunctionDeclaration
@@ -34,6 +34,11 @@ FunctionBody
     : '{' SourceElements '}'
     ;
 
+TopLevelStatement
+    : Block
+    | VariableStatement
+    | EmptyStatement
+    ;
 
 Statement
     : Block

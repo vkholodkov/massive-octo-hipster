@@ -1,4 +1,6 @@
 
+%left '+' '-' '*' '/' ;
+
 grammar
     : expr
     ;
