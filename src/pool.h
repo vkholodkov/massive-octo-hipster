@@ -19,6 +19,7 @@ typedef struct {
     pchunk_t *chunks, *current;
     plarge_t *large;
     FILE *debug;
+    size_t alloc_size;
 } pool_t;
 
 void pool_init();

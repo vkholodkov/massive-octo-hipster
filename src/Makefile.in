@@ -5,22 +5,14 @@ INCLUDES=-I..
 CFLAGS=$(INCLUDES) @CFLAGS@
 LDFLAGS=@LDFLAGS@
 LIBS=@LIBS@
-TEST_OBJS=
-TEST=
 OBJS=pool.o symtab.o string.o list.o bootstrap.o vector.o grammar.o output.o lookahead.o trie.o lookup.o
 MOH_OBJS=main.o
 MOH=moh
-TEST_OBJS=test.o pool.o
-TEST=test
 DEPS=.deps
 
 all: $(MOH)
 
 $(MOH): $(MOH_OBJS) $(OBJS)
-	@echo "Linking $@"
-	$(CC) $^ -o $@ $(CDFLAGS) $(LDFLAGS) $(LIBS)
-
-$(TEST): $(TEST_OBJS)
 	@echo "Linking $@"
 	$(CC) $^ -o $@ $(CDFLAGS) $(LDFLAGS) $(LIBS)
 
@@ -31,12 +23,12 @@ $(TEST): $(TEST_OBJS)
 	gcc -M -MF$@ $(CFLAGS) $<
 
 clean:
-	rm -f core $(OBJS) $(MOH_OBJS) $(TEST_OBJS) $(TEST_RUNNER_OBJS) $(TEST) $(MOH)
+	rm -f core $(OBJS) $(MOH_OBJS) $(MOH)
 
 distclean: clean
-	rm -f $(DEPS) $(patsubst %.o,%.d,$(OBJS)) $(patsubst %.o,%.d,$(TEST_OBJS))
+	rm -f $(DEPS) $(patsubst %.o,%.d,$(OBJS))
 
-depend: $(patsubst %.o,%.d,$(OBJS)) $(patsubst %.o,%.d,$(TEST_OBJS))
+depend: $(patsubst %.o,%.d,$(OBJS))
 	cat $^ > $(DEPS)
 
 -include .deps
