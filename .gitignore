@@ -3,8 +3,10 @@ CMakeFiles
 CMakeCache.txt
 bootstrap
 cmake_install.cmake
+install_manifest.txt
 config.h
 moh
 *.o
 *.a
+*.debug
 moh_grammar.h

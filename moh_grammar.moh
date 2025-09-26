@@ -1,0 +1,108 @@
+
+%type<rule_t> Rule Alternatives Sequence BasicRule Atom Repetition ;
+
+GrammarFile
+    : Declarations
+    ;
+
+Declarations
+    : Declaration
+    | Declarations Declaration
+    ;
+
+Declaration
+    : Import
+    | Token
+    | Type
+    | Grammar
+    | Parser
+    ;
+
+Import
+    : IMPORT STRING ';'
+    ;
+
+Token
+    : TOKEN Symbols ';'
+    ;
+
+Type
+    : TYPE '<' SYMBOL '>' Symbols ';'
+    ;
+
+Symbols
+    : SYMBOL
+    | Symbols SYMBOL
+    ;
+
+Grammar
+    : GRAMMAR SYMBOL '{' GrammarDeclarations '}'
+    ;
+
+GrammarDeclarations
+    : GrammarDeclaration
+    | GrammarDeclarations GrammarDeclaration
+    ;
+
+GrammarDeclaration
+    : Assoc
+    | Rule
+    ;
+
+Assoc
+    : LEFT
+    | RIGHT
+    | NOASSOC
+    ;
+
+Rule
+    : SYMBOL ':' Alternatives ';'
+    | SYMBOL '<' SYMBOL '>' ':' Alternatives ';'
+    ;
+
+Alternatives
+    : Sequence
+    | Alternatives '|' Sequence
+    ;
+
+Sequence
+    : BasicRule
+    | Sequence BasicRule
+    ;
+
+BasicRule
+    : Atom
+    | Repetition
+    ;
+
+Repetition
+    : Atom '*' 
+    | Atom '+' 
+    | Atom '?' 
+    ;
+
+Atom
+    : '(' Alternatives ')'
+    | SYMBOL
+    | SYMBOL '<' SYMBOL '>'
+    ;
+
+Parser
+    : PARSER SYMBOL '{' ParserDirectives '}'
+    ;
+
+ParserDirectives
+    : ParserDirective
+    | ParserDirectives ParserDirective
+    ;
+
+ParserDirective
+    : SYMBOL Arguments ';'
+    ;
+
+Arguments
+    : SYMBOL
+    | Arguments SYMBOL
+    ;
+
+

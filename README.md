@@ -15,11 +15,10 @@ Checkout the source from the repository and run autoconf in the top directory.
 
 After that run:
 
-    ./configure
-    make depend
+    cmake .
     make
 
-This should produce a binary src/moh. To install run:
+This should produce a binary moh. To install run:
 
     make install
 

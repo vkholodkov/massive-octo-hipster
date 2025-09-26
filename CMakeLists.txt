@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(moh)
 
+include(GNUInstallDirs)
 include(CheckIncludeFiles)
 include(CheckSymbolExists)
 
@@ -81,3 +82,4 @@ set_target_properties(generate_moh_grammar_h PROPERTIES ADDITIONAL_CLEAN_FILES m
 add_executable(moh main.c bootstrap.c)
 add_dependencies(moh generate_moh_grammar_h)
 target_link_libraries(moh lalr1)
+install(TARGETS moh DESTINATION ${CMAKE_INSTALL_BINDIR})
