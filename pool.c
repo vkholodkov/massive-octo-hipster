@@ -1,13 +1,18 @@
 
+#include "config.h"
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <sys/types.h>
 
+#ifdef HAVE_SYS_AUXV_H
+#include <sys/auxv.h>
+#endif
+
 #include <malloc.h>
 #include <string.h>
 
-#include "config.h"
 #include "pool.h"
 
 #define POOL_ALIGN 16
@@ -21,7 +26,9 @@ static u_char *align_hi(u_char *ptr, size_t align) {
 }
 
 void pool_init() {
-#if defined(HAVE_SYSCONF)
+#if defined(HAVE_GETAUXVAL)
+    pagesize = getauxval(AT_PAGESZ);
+#elif defined(HAVE_SYSCONF)
     pagesize = sysconf(_SC_PAGESIZE);
 #elif defined(HAVE_GETPAGESIZE)
     pagesize = getpagesize();

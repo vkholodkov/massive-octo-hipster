@@ -26,8 +26,15 @@ if(HAVE_UNISTD_H)
   set(INCLUDES ${INCLUDES} unistd.h)
 endif()
 
+check_include_files(sys/auxv.h HAVE_SYS_AUXV_H)
+
+if(HAVE_SYS_AUXV_H)
+  set(INCLUDES ${INCLUDES} sys/auxv.h)
+endif()
+
 check_symbol_exists(sysconf "${INCLUDES}" HAVE_SYSCONF)
 check_symbol_exists(getpagesize "${INCLUDES}" HAVE_GETPAGESIZE)
+check_symbol_exists(getauxval "${INCLUDES}" HAVE_GETAUXVAL)
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 

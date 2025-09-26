@@ -1,3 +1,7 @@
 
+#cmakedefine HAVE_UNISTD_H
+#cmakedefine HAVE_SYS_AUXV_H
+
 #cmakedefine HAVE_SYSCONF
 #cmakedefine HAVE_GETPAGESIZE
+#cmakedefine HAVE_GETAUXVAL
