@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.5)
 project(moh)
 
+include(CheckIncludeFiles)
+include(CheckSymbolExists)
+
 set(CMAKE_BUILD_TYPE Debug)
 
 #
@@ -15,6 +18,16 @@ if(MSVC)
 elseif(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUCXX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Werror -Wno-long-long -pedantic")
 endif()
+
+set(INCLUDES "")
+check_include_files(unistd.h HAVE_UNISTD_H)
+
+if(HAVE_UNISTD_H)
+  set(INCLUDES ${INCLUDES} unistd.h)
+endif()
+
+check_symbol_exists(sysconf "${INCLUDES}" HAVE_SYSCONF)
+check_symbol_exists(getpagesize "${INCLUDES}" HAVE_GETPAGESIZE)
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 

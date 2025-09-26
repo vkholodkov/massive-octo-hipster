@@ -1,3 +1,3 @@
 
-/* Define whether we have getpagesize function */
-#undef HAVE_GETPAGESIZE
+#cmakedefine HAVE_SYSCONF
+#cmakedefine HAVE_GETPAGESIZE
