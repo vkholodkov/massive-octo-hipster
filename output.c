@@ -627,6 +627,7 @@ add_action:
                 }
             }
 done:
+            ;
         }
 
         tr = tr->next;
@@ -732,6 +733,7 @@ add_actions:
                 return rc;
             }
 done:
+            ;
         }
         else /*if(item->core)*/ {
             /*

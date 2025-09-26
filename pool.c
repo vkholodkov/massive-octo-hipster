@@ -147,7 +147,9 @@ void *pcalloc(pool_t *pool, size_t size) {
 
     p = palloc(pool, size);
 
-    bzero(p, size);
+    if(p != NULL) {
+        bzero(p, size);
+    }
 
     return p;
 }

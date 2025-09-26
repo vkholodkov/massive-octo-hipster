@@ -41,7 +41,7 @@ typedef struct {
     boo_uint_t                  num_states;
 } boo_trie_t;
 
-boo_trie_t *tree_create(pool_t*);
+boo_trie_t *trie_create(pool_t*);
 boo_trie_node_t *boo_trie_add_sequence(boo_trie_t*, boo_trie_node_t*, boo_uint_t*, boo_uint_t*);
 boo_trie_node_t *boo_trie_next(boo_trie_t*, boo_trie_node_t*, boo_uint_t);
 

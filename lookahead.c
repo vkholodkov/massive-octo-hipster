@@ -643,7 +643,7 @@ boo_int_t lookahead_build(boo_grammar_t *grammar, boo_list_t *item_sets)
     boo_int_t rc;
     boo_lalr1_item_set_t *item_set;
 
-    grammar->lookahead_set = tree_create(grammar->pool);
+    grammar->lookahead_set = trie_create(grammar->pool);
 
     if(grammar->lookahead_set == NULL) {
         return BOO_ERROR;

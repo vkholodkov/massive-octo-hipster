@@ -1,7 +1,7 @@
 
 #include "trie.h"
 
-boo_trie_t *tree_create(pool_t *pool)
+boo_trie_t *trie_create(pool_t *pool)
 {
     boo_trie_t *t;
 

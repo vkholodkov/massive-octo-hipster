@@ -6,7 +6,7 @@
 void grammar_dump_item_set(FILE*, boo_grammar_t*, boo_lalr1_item_set_t*);
 
 /*
- * Create a grammar and initialize all internal lists and a symbol table
+ * Create a grammar and initialize all internal lists and the symbol table
  */
 boo_grammar_t *grammar_create(pool_t *p)
 {
@@ -35,7 +35,7 @@ boo_grammar_t *grammar_create(pool_t *p)
 
     grammar->lookahead_set = NULL;
 
-    grammar->core_set_index = tree_create(p);
+    grammar->core_set_index = trie_create(p);
 
     if(grammar->core_set_index == NULL) {
         return NULL;
