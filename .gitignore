@@ -1,5 +1,10 @@
 Makefile
-autom4te.cache
-config.log
-config.status
-configure
+CMakeFiles
+CMakeCache.txt
+bootstrap
+cmake_install.cmake
+config.h
+moh
+*.o
+*.a
+moh_grammar.h
