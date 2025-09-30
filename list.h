@@ -2,14 +2,11 @@
 #ifndef _BOO_LIST_H_
 #define _BOO_LIST_H_
 
-#include <sys/types.h>
-
 typedef struct boo_list_entry_s {
     struct boo_list_entry_s     *next, *prev;
 } boo_list_entry_t;
 
 typedef struct {
-    size_t                  entry_size;
     boo_list_entry_t        entries;
 } boo_list_t;
 
